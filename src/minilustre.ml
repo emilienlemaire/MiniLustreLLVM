@@ -1,11 +1,14 @@
 
 (* Programme principal *)
 
+open Frontend
 open Format
 open Lexing
 open Lexer
 open Parser
+open Ast_lib
 open Ast
+open Target_lib
 
 let usage = "usage: "^Sys.argv.(0)^" [options] file.mls"
 

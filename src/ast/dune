@@ -1,0 +1,4 @@
+(library
+  (name ast_lib)
+  (flags (:standard -w -32 -w -9 -w -27 -w -39 -w -33))
+  (modules_without_implementation ast asttypes typed_ast imp_ast))

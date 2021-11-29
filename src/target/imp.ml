@@ -1,4 +1,4 @@
-open Asttypes
+open Ast_lib
 open Typed_ast
 open Imp_ast
 
@@ -22,7 +22,7 @@ let gen_mem_id =
   let cpt = ref 0 in
   fun n -> incr cpt; n^"_mem"^(string_of_int !cpt)
 
-let compile_patt {tpatt_desc = d ; tpatt_type = t} =
+let compile_patt {tpatt_desc = d ; tpatt_type = t; _} =
   try List.combine d t with Invalid_argument _ -> assert false
 
 let rec compile_base_expr e =
@@ -32,26 +32,26 @@ let rec compile_base_expr e =
     | TE_ident x -> ME_ident x
     | TE_unop (op, e) -> ME_unop(op, compile_base_expr e)
     | TE_binop (op, e1, e2) ->
-	let ce1 =  compile_base_expr e1 in
-	let ce2 =  compile_base_expr e2 in
-	ME_binop (op, ce1, ce2)
+        let ce1 =  compile_base_expr e1 in
+        let ce2 =  compile_base_expr e2 in
+        ME_binop (op, ce1, ce2)
     | TE_if (e1, e2, e3) ->
-	let ce1 =  compile_base_expr e1 in
-	let ce2 =  compile_base_expr e2 in
-	let ce3 =  compile_base_expr e3 in
-	ME_if (ce1, ce2, ce3)
+        let ce1 =  compile_base_expr e1 in
+        let ce2 =  compile_base_expr e2 in
+        let ce3 =  compile_base_expr e3 in
+        ME_if (ce1, ce2, ce3)
     | TE_tuple el -> ME_tuple (List.map compile_base_expr el)
     | TE_print el -> ME_print (List.map compile_base_expr el)
     | TE_fby _ -> assert false (* impossible car en forme normale *)
     | TE_app _ -> assert false (* impossible car en forme normale *)
     | TE_prim(f, el) ->
-	let _, f_out_ty =
-	  try List.assoc f Typing.Delta.prims
-	  with Not_found ->
-	    Printf.fprintf stderr "not a prim : %s" f;
-	    assert false
-	in
-	ME_prim(f, List.map compile_base_expr el, List.length f_out_ty)
+        let _, f_out_ty =
+          try List.assoc f Typing.Delta.prims
+          with Not_found ->
+            Printf.fprintf stderr "not a prim : %s" f;
+            assert false
+        in
+        ME_prim(f, List.map compile_base_expr el, List.length f_out_ty)
   in
   { mexpr_desc = desc; mexpr_type = e.texpr_type; }
 
@@ -80,18 +80,18 @@ let compile_equation
       let tnext_ids = List.combine next_ids p.tpatt_type in
       let fby_init = List.combine next_ids e1 in
       let compute =
-	let cel =
-	  List.map2
-	    (fun x t -> { mexpr_desc = ME_mem x; mexpr_type = [t]; })
-	    next_ids p.tpatt_type
-	in
-	let expr =
-	  match cel with
-	    [ce] -> ce
-	  | l -> { mexpr_desc = ME_tuple l;
-		   mexpr_type = e.texpr_type }
-	in
-	{ meq_patt = tvars ; meq_expr = expr }
+        let cel =
+          List.map2
+            (fun x t -> { mexpr_desc = ME_mem x; mexpr_type = [t]; })
+            next_ids p.tpatt_type
+        in
+        let expr =
+          match cel with
+            [ce] -> ce
+          | l -> { mexpr_desc = ME_tuple l;
+                   mexpr_type = e.texpr_type }
+        in
+        { meq_patt = tvars ; meq_expr = expr }
       in
       let update = List.combine next_ids (compile_atoms e2) in
       { mem_acc with fby_mem = tnext_ids@mem_acc.fby_mem } ,
@@ -104,17 +104,17 @@ let compile_equation
       let step_in = (untulify el) in
       let node_init = [mem_id, n] in
       let compute =
-	let expr =
-	  { mexpr_desc =
-	      ME_app (n, mem_id,
-		      List.map compile_base_expr step_in);
-	    mexpr_type =
-	      List.map
-	        (function { texpr_type = [t] } -> t
-		  | _ -> assert false)
-	        step_in; }
-	in
-	{ meq_patt = tvars ; meq_expr = expr }
+        let expr =
+          { mexpr_desc =
+              ME_app (n, mem_id,
+                      List.map compile_base_expr step_in);
+            mexpr_type =
+              List.map
+                (function { texpr_type = [t] ; _} -> t
+                  | _ -> assert false)
+                step_in; }
+        in
+        { meq_patt = tvars ; meq_expr = expr }
       in
       { mem_acc with node_mem = node_mem@mem_acc.node_mem } ,
       { init_acc with node_init = node_init@init_acc.node_init } ,
@@ -167,8 +167,8 @@ let rename_node env n =
     { n.mn_init with
       node_init =
         List.map
-	  (fun (x,f) -> (x, List.assoc f env))
-	  n.mn_init.node_init; }
+          (fun (x,f) -> (x, List.assoc f env))
+          n.mn_init.node_init; }
   in
   let compute =
     List.map (rename_equation env) n.mn_compute

@@ -1,0 +1,3 @@
+(library
+  (name target_lib)
+  (libraries ast_lib))

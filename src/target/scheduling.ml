@@ -1,3 +1,4 @@
+open Ast_lib
 open Typed_ast
 
 exception Causality
@@ -15,17 +16,17 @@ module Graph = Set.Make(
 
 (** [add_vars_of_patt s patt] ajoute à l'ensemble [s] les variables
     introduites par le motif [patt]. *)
-let add_vars_of_patt s {tpatt_desc=p} =
+let add_vars_of_patt s {tpatt_desc=p;_} =
   List.fold_left (fun s x -> S.add x s) s p
 
 
 (** [add_vars_of_exp s exp] ajoute à l'ensemble [s] les variables
     dont l'expression [exp] dépend instantanément. *)
-let rec add_vars_of_exp s {texpr_desc=e} =
+let rec add_vars_of_exp s {texpr_desc=e;_} =
   match e with
   | TE_const _ -> s
   | TE_ident x -> S.add x s
-  | TE_fby (c, e') -> s
+  | TE_fby (_c, _e') -> s
   | TE_unop (_,e') -> add_vars_of_exp s e'
   | TE_binop (_,e1,e2) ->
       let s = add_vars_of_exp s e1 in

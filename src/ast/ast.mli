@@ -1,6 +1,6 @@
 (* Arbres de syntaxe abstraite *)
 
-open Asttypes 
+open Asttypes
 
 type ident = string
 
@@ -33,8 +33,8 @@ type p_equation =
 type p_node =
     { pn_name: ident;
       pn_input: (ident * base_ty) list;
-      pn_output: (ident * base_ty) list; 
-      pn_local: (ident * base_ty) list; 
+      pn_output: (ident * base_ty) list;
+      pn_local: (ident * base_ty) list;
       pn_equs: p_equation list;
       pn_loc: location; }
 

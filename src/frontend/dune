@@ -1,0 +1,11 @@
+(library
+  (name frontend)
+  (libraries ast_lib))
+
+(menhir
+  (flags
+    (:standard -v))
+  (modules parser))
+
+(ocamllex
+  (modules lexer))

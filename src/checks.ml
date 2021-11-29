@@ -1,8 +1,10 @@
 (* Vérification des transformations *)
 
+open Ast_lib
 open Asttypes
 open Typed_ast
 open Typed_ast_utils
+open Target_lib
 
 
 (* Vérification de la normalisation *)

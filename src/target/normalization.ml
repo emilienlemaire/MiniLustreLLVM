@@ -1,3 +1,4 @@
+open Ast_lib
 open Typed_ast
 
 let new_local =
@@ -14,7 +15,7 @@ let new_local =
     [patt] est la variable (ou le tuple de variables) vue comme un motif et
     [expr] est la variable (ou le tuple de variables) vue comme une expression.
 *)
-let new_pat ({ texpr_type= ty; texpr_loc = loc } as e) =
+let new_pat ({ texpr_type= ty; texpr_loc = loc ; _} as e) =
   match ty with
   | [t] ->
       let x = new_local() in

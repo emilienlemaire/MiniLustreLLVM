@@ -1,3 +1,4 @@
+open Ast_lib
 open Format
 open Asttypes
 open Imp_ast
@@ -10,25 +11,25 @@ let string_of_list =
     | x::xs -> string_of_list (acc^(f x)^sep) f sep xs
   in
   fun f sep l ->
-    string_of_list "" f sep l 
+    string_of_list "" f sep l
 
 let print_list print print_sep l =
   let rec printrec l =
     match l with
       [] -> ()
     | [x] ->
-	print x
+        print x
     | x::l ->
-	open_box 0;
-	print x;
-	print_sep ();
-(*	print_space ();*)
-	printrec l;
-	close_box () in
+        open_box 0;
+        print x;
+        print_sep ();
+(*      print_space ();*)
+        printrec l;
+        close_box () in
   printrec l
 
 let string_of_base_ty ty =
-  match ty with  
+  match ty with
   | Tunit -> "unit"
   | Tbool -> "bool"
   | Tint -> "int"
@@ -65,13 +66,13 @@ let string_of_const c =
   match c with
   | Cunit ->  "()"
   | Cbool(b) -> if b then "true" else "false"
-  | Cint(i) -> 
+  | Cint(i) ->
       if i < 0 then
-	"("^(string_of_int i)^")"
+        "("^(string_of_int i)^")"
       else string_of_int i
   | Cfloat(f) ->
       if f < 0.0 then
-	"("^(string_of_float f)^")"
+        "("^(string_of_float f)^")"
       else string_of_float f
   | Cstring(s) -> "\""^s^"\""
 
@@ -80,54 +81,54 @@ let string_of_atom a =
   | Const c -> string_of_const c
   | Ident x -> x
 
-let rec string_of_expr e = 
+let rec string_of_expr e =
   match e.mexpr_desc with
   | ME_const c -> string_of_const c
   | ME_ident x -> x
   | ME_mem x -> "mem'."^x
   | ME_unop(op,e1) ->
       sprintf "(%s %s)" (string_of_unop op) (string_of_expr e1)
-  | ME_binop (op, e1, e2) -> 
-      sprintf "(%s %s %s)" 
-	(string_of_expr e1) (string_of_binop op) (string_of_expr e2)
-  | ME_if (e1,e2,e3) -> 
+  | ME_binop (op, e1, e2) ->
+      sprintf "(%s %s %s)"
+        (string_of_expr e1) (string_of_binop op) (string_of_expr e2)
+  | ME_if (e1,e2,e3) ->
       sprintf "@\n    (if %s then@\n       %s@\n     else@\n       %s)"
-	(string_of_expr e1) (string_of_expr e2) (string_of_expr e3)
-  | ME_tuple el -> 
+        (string_of_expr e1) (string_of_expr e2) (string_of_expr e3)
+  | ME_tuple el ->
       sprintf "(%s)" (string_of_list string_of_expr ", " el)
   | ME_app(f,mem,args) ->
-      sprintf "(%s_step mem'.%s (%s))" 
-	f mem (string_of_list string_of_expr ", " args)
+      sprintf "(%s_step mem'.%s (%s))"
+        f mem (string_of_list string_of_expr ", " args)
   | ME_prim(f,args,_) ->
       sprintf "(%s (%s))" f (string_of_list string_of_expr ", " args)
-  | ME_print(el) -> 
+  | ME_print(el) ->
       sprintf "(@\n%s    flush_all())"
-	(string_of_list string_of_print_expr "" el)
+        (string_of_list string_of_print_expr "" el)
 
 and string_of_print_expr e =
   match e.mexpr_type with
   | [t] ->
       begin match t with
       | Tunit -> "    print_string \"()\";@\n"
-      | Tbool -> 
-	  sprintf "    (print_bool %s);@\n" (string_of_expr e)
+      | Tbool ->
+          sprintf "    (print_bool %s);@\n" (string_of_expr e)
       | Tint -> sprintf "    (print_int %s);@\n" (string_of_expr e)
       | Tfloat -> sprintf "    (print_float %s);@\n" (string_of_expr e)
       | Tstring -> sprintf "    (print_string %s);@\n" (string_of_expr e)
       end;
   | _ -> assert false
-  
 
-let print_mem n = 
+
+let print_mem n =
   if n.mn_mem = { fby_mem = []; node_mem = []; } then
     printf "type %s_mem = unit@\n" n.mn_name
   else begin
     printf "type %s_mem = {@\n" n.mn_name;
-    print_list 
+    print_list
       (fun (x,t) -> printf "    mutable %s: %s;@\n" x (string_of_base_ty t))
       (fun () -> ())
       n.mn_mem.fby_mem;
-    print_list 
+    print_list
       (fun (x,t) -> printf "    %s: %s_mem;@\n" x t)
       (fun () -> ())
       n.mn_mem.node_mem;
@@ -136,31 +137,31 @@ let print_mem n =
 
 let print_init n =
   if n.mn_mem = { fby_mem = []; node_mem = []; } then
-    printf "let %s_init () = ()@\n" n.mn_name 
+    printf "let %s_init () = ()@\n" n.mn_name
   else begin
     printf "let %s_init () = {@\n" n.mn_name;
-    print_list 
+    print_list
       (fun (x,c) -> printf "    %s = %s;@\n" x (string_of_const c))
       (fun () -> ())
       n.mn_init.fby_init;
-    print_list 
+    print_list
       (fun (x,f) -> printf "    %s = %s_init ();@\n" x f)
       (fun () -> ())
       n.mn_init.node_init;
     printf "  }@\n"
   end
 
-let print_compute { meq_patt = p; meq_expr = e } = 
-  printf "  let (%s) = %s in@\n" 
+let print_compute { meq_patt = p; meq_expr = e } =
+  printf "  let (%s) = %s in@\n"
     (string_of_list (fun (x,_) -> x) ", " p)
     (string_of_expr e)
 
 let print_update (x,a) =
   printf "  mem'.%s <- %s;@\n" x (string_of_atom a)
- 
+
 let print_step n =
-  printf "let %s_step mem' (%s) = @\n" 
-    n.mn_name 
+  printf "let %s_step mem' (%s) = @\n"
+    n.mn_name
     (string_of_list (fun (x,_) -> x) ", " n.mn_input_step);
   List.iter print_compute n.mn_compute;
   List.iter print_update n.mn_update;
@@ -219,10 +220,10 @@ let print_run main =
   printf "  done\n";
   printf "\n";
   printf "let _ = run %s_init %s_step" main main
-  
-let _ = set_max_boxes max_int 
 
-let output_ocaml oc f main = 
+let _ = set_max_boxes max_int
+
+let output_ocaml oc f main =
   set_formatter_out_channel oc;
   print_preamble ();
   printf "@\n";

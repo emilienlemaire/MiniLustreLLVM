@@ -1,7 +1,8 @@
 %{
 
-  open Asttypes
-  open Ast
+  open Ast_lib.Ast
+  open Ast_lib.Asttypes
+  open Parsing
 
   let loc () = symbol_start_pos (), symbol_end_pos ()
   let mk_expr e = { pexpr_desc = e; pexpr_loc = loc () }
@@ -10,11 +11,11 @@
 %}
 
 %token AND
-%token BOOL  
+%token BOOL
 %token CONST
 %token COLON
 %token COMMA
-%token <Asttypes.binop> COMP
+%token <Ast_lib.Asttypes.binop> COMP
 %token <bool> CONST_BOOL
 %token <int> CONST_INT
 %token <float> CONST_FLOAT
@@ -25,10 +26,10 @@
 %token EQUAL
 %token NEQ
 %token FBY
-%token FLOAT 
+%token FLOAT
 %token <string> IDENT
 %token IF
-%token INT   
+%token INT
 %token LET
 %token LPAREN
 %token MINUS
@@ -48,14 +49,14 @@
 %token STRING
 %token TEL
 %token THEN
-%token UNIT  
+%token UNIT
 %token VAR
 
 
 %nonassoc THEN
 %nonassoc ELSE
 %right FBY
-%left OR 
+%left OR
 %left AND
 %left COMP EQUAL NEQ                          /* < <= > >= <> = <> */
 %left PLUS MINUS PLUS_DOT MINUS_DOT           /* + -  */
@@ -67,7 +68,7 @@
 /* Point d'entrée */
 
 %start file
-%type <Ast.p_file> file
+%type <Ast_lib.Ast.p_file> file
 
 %%
 
@@ -81,9 +82,9 @@ node_decs:
 
 
 node:
-| NODE IDENT LPAREN in_params RPAREN 
+| NODE IDENT LPAREN in_params RPAREN
   RETURNS LPAREN out_params RPAREN SEMICOL
-  local_params 
+  local_params
   LET eq_list TEL
     { { pn_name = $2;
 	pn_input = $4;
@@ -114,7 +115,7 @@ local_params:
 ;
 
 param_list:
-| param 
+| param
     { $1 }
 | param SEMICOL param_list
     { $1 @ $3 }
@@ -156,9 +157,9 @@ pattern:
 expr:
 | LPAREN expr RPAREN
     { $2 }
-| const 
+| const
     { $1 }
-| IDENT 
+| IDENT
     { mk_expr (PE_ident $1)}
 | IDENT LPAREN expr_comma_list_empty RPAREN
     { mk_expr (PE_app ($1, $3))}
@@ -166,31 +167,31 @@ expr:
     { mk_expr (PE_if ($2, $4, $6)) }
 | expr FBY expr
     { mk_expr (PE_fby ($1, $3)) }
-| expr PLUS expr          
+| expr PLUS expr
     { mk_expr (PE_binop (Badd, $1, $3)) }
-| expr PLUS_DOT expr          
+| expr PLUS_DOT expr
     { mk_expr (PE_binop (Badd_f, $1, $3)) }
-| expr MINUS expr         
+| expr MINUS expr
     { mk_expr (PE_binop (Bsub, $1, $3)) }
-| expr MINUS_DOT expr         
+| expr MINUS_DOT expr
     { mk_expr (PE_binop (Bsub_f, $1, $3)) }
-| expr STAR expr        
+| expr STAR expr
     { mk_expr (PE_binop (Bmul, $1, $3)) }
-| expr STAR_DOT expr        
+| expr STAR_DOT expr
     { mk_expr (PE_binop (Bmul_f, $1, $3)) }
-| expr SLASH expr        
+| expr SLASH expr
     { mk_expr (PE_binop (Bdiv, $1, $3)) }
-| expr SLASH_DOT expr        
+| expr SLASH_DOT expr
     { mk_expr (PE_binop (Bdiv_f, $1, $3)) }
-| expr COMP expr         
+| expr COMP expr
     { mk_expr (PE_binop ($2, $1, $3)) }
-| expr EQUAL expr         
+| expr EQUAL expr
     { mk_expr (PE_binop (Beq, $1, $3)) }
-| expr NEQ expr         
+| expr NEQ expr
     { mk_expr (PE_binop (Bneq, $1, $3)) }
-| expr AND expr          
+| expr AND expr
     { mk_expr (PE_binop (Band, $1, $3)) }
-| expr OR expr          
+| expr OR expr
     { mk_expr (PE_binop (Bor, $1, $3)) }
 | MINUS expr /* %prec uminus */
     { mk_expr (PE_unop (Uminus, $2)) }
@@ -205,13 +206,13 @@ expr:
 const:
 | LPAREN RPAREN
     { mk_expr (PE_const Cunit) }
-| CONST_BOOL 
+| CONST_BOOL
     { mk_expr (PE_const (Cbool $1)) }
-| CONST_INT 
+| CONST_INT
     { mk_expr (PE_const (Cint $1)) }
 | CONST_FLOAT
     { mk_expr (PE_const (Cfloat $1)) }
-| CONST_STRING 
+| CONST_STRING
     { mk_expr (PE_const (Cstring $1)) }
 ;
 

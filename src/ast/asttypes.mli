@@ -16,12 +16,12 @@ type const =
   | Cfloat of float
   | Cstring of string
 
-type unop = 
+type unop =
   | Unot | Uminus | Uminus_f
 
-type binop = 
-  | Beq | Bneq | Blt | Ble | Bgt | Bge 
+type binop =
+  | Beq | Bneq | Blt | Ble | Bgt | Bge
   | Badd | Bsub | Bmul | Bdiv | Bmod
-  | Badd_f | Bsub_f | Bmul_f | Bdiv_f 
+  | Badd_f | Bsub_f | Bmul_f | Bdiv_f
   | Band | Bor
 

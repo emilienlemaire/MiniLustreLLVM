@@ -1,34 +1,10 @@
-OCAMLBUILD= ocamlbuild -no-links -classic-display \
-		-tags debug,annot
+all:
+	dune build src/
 
-TARGET=native
-MAIN=minilustre
+install:
+	dune build src/minilustre.exe
+	mv ./_build/default/src/minilustre.exe ./bin/minilustre
 
-all: $(MAIN)
-
-native: TARGET := native
-native: all
-opt: native
-$(MAIN).opt: native
-$(MAIN).native: native
-
-
-byte: TARGET := byte
-byte: all
-$(MAIN).byte: byte
-
-
-$(MAIN): $(MAIN).target
-	cp _build/$(MAIN).$(TARGET) $(MAIN)
-
-$(MAIN).target:
-	$(OCAMLBUILD) $(MAIN).$(TARGET)
-
-
-clean: 
-	ocamlbuild -clean
-
-realclean: clean
-	rm -f $(MAIN) *~
-
-cleanall: realclean
+clean:
+	rm -rf ./bin/minilustre
+	dune clean
