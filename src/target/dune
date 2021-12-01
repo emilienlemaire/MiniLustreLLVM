@@ -1,3 +1,9 @@
 (library
   (name target_lib)
-  (libraries ast_lib))
+  (libraries
+    ast_lib
+    llvm
+    llvm.analysis
+    llvm.executionengine
+    llvm.target
+    llvm.scalar_opts))
