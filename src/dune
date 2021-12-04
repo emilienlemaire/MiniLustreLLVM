@@ -2,3 +2,7 @@
   (name minilustre)
   (flags (:standard -w -32 -w -9 -w -27 -w -39 -w -33))
   (libraries ast_lib frontend target_lib))
+
+(env
+  (dev
+    (flags (:standard -g))))

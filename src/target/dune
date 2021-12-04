@@ -1,6 +1,8 @@
 (library
   (name target_lib)
+  (flags (:standard -w -32))
   (libraries
+    str
     ast_lib
     llvm
     llvm.analysis
