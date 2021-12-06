@@ -4,6 +4,7 @@
   (libraries
     str
     ast_lib
+    printers
     llvm
     llvm.analysis
     llvm.executionengine

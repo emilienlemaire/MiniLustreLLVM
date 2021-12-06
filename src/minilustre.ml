@@ -9,6 +9,7 @@ open Parser
 open Ast_lib
 open Ast
 open Target_lib
+open Printers
 
 let usage = "usage: "^Sys.argv.(0)^" [options] file.mls"
 
