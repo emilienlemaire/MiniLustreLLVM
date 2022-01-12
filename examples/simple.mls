@@ -1,4 +1,13 @@
-node n (i: unit) returns (o: unit);
-let 
-  o = print("coucou\n");
+node t (u: unit) returns (i,j: int);
+let
+  i = 0;
+  j = 0;
+tel
+
+node n (u: unit) returns (o: unit);
+var f: float; k0, k1: int;
+let
+  (k0, k1) = t (());
+  f = float_of_string("1.0");
+  o = print(f);
 tel

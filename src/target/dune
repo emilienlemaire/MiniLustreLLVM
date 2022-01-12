@@ -9,4 +9,5 @@
     llvm.analysis
     llvm.executionengine
     llvm.target
-    llvm.scalar_opts))
+    llvm.scalar_opts)
+  (ocamlc_flags (-ccopt "-L%{ocaml_where}/llvm -L%{ocaml_where}/../ctypes -L%{ocaml_where}/../integers")))
