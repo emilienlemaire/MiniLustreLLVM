@@ -1,13 +1,13 @@
-node t (u: unit) returns (i,j: int);
+node t () returns (i,j: int);
 let
-  i = 0;
-  j = 0;
+  i = 1000;
+  j = 1;
 tel
 
 node n (u: unit) returns (o: unit);
 var f: float; k0, k1: int;
 let
-  (k0, k1) = t (());
+  (k0, k1) = t ();
   f = float_of_string("1.0");
-  o = print(f);
+  o = print(f, k0, k1);
 tel
