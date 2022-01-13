@@ -310,8 +310,8 @@ let rec compile_expr typ ({mn_name = name;_ } as node) ({mexpr_desc = expr; _} a
                     if Llvm.is_undef c then
                         acc
                     else
-                        acc@[c]
-                ) [] args
+                        c::acc
+                ) [] (List.rev args)
             else
                 let idx = Option.get idx in
                 let mem_obj = List.assoc "mem" named_llvalues in
@@ -470,7 +470,7 @@ let rec compile_expr typ ({mn_name = name;_ } as node) ({mexpr_desc = expr; _} a
             let args = Array.of_list geps in
             Llvm.build_call func args "" llvm_builder
     | ME_tuple el ->
-            let llvals = clean_compile typ node el in
+            let llvals = List.rev (clean_compile typ node el) in
             let named_llvals = Hashtbl.find node_vars_llvalue node.mn_name in
             let lltyps = List.map (fun elt ->
                 let name = Llvm.value_name elt in
@@ -496,14 +496,14 @@ let rec compile_expr typ ({mn_name = name;_ } as node) ({mexpr_desc = expr; _} a
                 ()
             ) llvals;
             tuple_struct
-and clean_compile typ node el =
+and clean_compile typ node =
     List.fold_left (fun acc elt ->
         let c = compile_expr typ node elt in
         if Llvm.is_undef c then
             acc
         else
-            acc@[c]
-    ) [] el
+            c::acc
+    ) []
 
 (*TODO: If the typ is void, we should check if it's an application *)
 let compile_equation node eq =
@@ -521,7 +521,7 @@ let compile_equation node eq =
                 let ptr = List.assoc name named_llvals in
                 (* Llvm.dump_module llvm_module; *)
                 Llvm.build_store value ptr llvm_builder
-            ) eq.meq_patt in
+            ) (List.rev eq.meq_patt) in
             assert ((List.length l) > 0);
             List.hd (List.rev l)
             end
@@ -585,7 +585,7 @@ let compile_node node =
     ) node.mn_compute in
     let _ = Llvm.build_br ret_b llvm_builder in
     Llvm.position_at_end ret_b llvm_builder;
-    let output_names = List.map (fun (n, _) -> n) output_list in
+    let output_names = List.map (fun (n, _) -> n) (List.rev output_list) in
     let ret_list = List.map (fun n -> List.assoc n name_llvalues) output_names in
     match ret_list with
     | [] -> Llvm.build_ret_void llvm_builder
