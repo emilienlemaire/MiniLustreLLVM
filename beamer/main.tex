@@ -1,0 +1,85 @@
+\documentclass{beamer} %
+
+%%%BASICS
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath, amssymb}
+\usepackage{semantic}
+\usepackage{appendix}
+\usepackage{babel}
+\usepackage{xcolor} % to access the named colour LightGray
+\usepackage{minted}
+% \usemintedstyle{vs}
+
+%%%START THEME SETTINGS
+\usetheme{CambridgeUS}
+\usecolortheme{beaver} % seahorse, dolphin, default, beaver
+\usefonttheme{professionalfonts}
+\useinnertheme{rectangles}
+% \useoutertheme{infolines}
+
+\definecolor{lred}{RGB}{255,245,245}
+\definecolor{mred}{RGB}{200,40,40}
+\definecolor{dred}{RGB}{170,0,0}
+
+\setbeamercolor{block title}{fg=white,bg=dred}
+\setbeamercolor{block body}{bg=lred}
+\setbeamercolor{section in toc}{fg=alerted text.fg}
+\setbeamercolor{section in toc shaded}{bg=structure!20, fg=mred}
+\setbeamercolor{section number projected}{fg=mred, bg=mred,fg=white}
+\setbeamercolor{subsection number projected}{fg=mred, bg=mred,fg=white}
+\setbeamertemplate{itemize item}{\color{mred}$\blacksquare$}
+\setbeamertemplate{enumerate item}{\color{mred}$\blacktriangleright$}
+\setbeamertemplate{enumerate item}{\color{mred}$\blacklozenge$}
+
+\setbeamercovered{transparent}
+%%%END THEME SETTINGS
+
+
+%------------------------------------------------------
+\title[Luste $\mapsto$ LLVM]{Compilation de Mini-Lustre vers LLVM}
+\institute[UPSaclay]{Université Paris-Saclay}
+\author{Lemaire \& Patault}
+\date{\today}
+%------------------------------------------------------
+
+\newcommand{\ocaml}[1]{\mintinline{ocaml}{#1}}
+
+\begin{document}
+%------------------------------------------------------
+
+\begin{frame}
+    \titlepage
+\end{frame}
+
+\section{Introduction}
+
+\subsection{TopLevel Ocaml}
+
+\begin{frame}[fragile]{Comment vérifier le typage ?}
+  \begin{minted}[baselinestretch=1.2,fontsize=\footnotesize]{llvm}
+define dso_local i32 @main() #0 {
+  %1 = alloca i32, align 4
+  %2 = alloca i32, align 4
+  %3 = alloca i32, align 4
+  store i32 1, i32* %1, align 4
+  store i32 1, i32* %2, align 4
+  %4 = load i32, i32* %1, align 4
+  %5 = load i32, i32* %2, align 4
+  %6 = add nsw i32 %4, %5
+  store i32 %6, i32* %3, align 4
+  %7 = load i32, i32* %3, align 4
+  %8 = call i32 (i8*, ...)
+        @printf(i8* getelementptr inbounds
+                    ([4 x i8], [4 x i8]* @.str, i64 0, i64 0), i32 %7)
+  ret i32 0
+}
+   \end{minted}
+\end{frame}
+
+\begin{frame}
+    \tableofcontents[currentsection]
+\end{frame}
+
+\end{document}
