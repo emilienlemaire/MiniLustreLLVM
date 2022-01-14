@@ -85,7 +85,7 @@ let () =
     if !sched_only then exit 0;
     let imp_prg = Imp.compile ft in
     let imp_prg = Imp.rename_nodes imp_prg main_node in
-    let _ = Target_lib.Mls_llvm.compile imp_prg in
+    let _ = Target_lib.Mls_llvm.compile imp_prg !main_node !steps in
     let ml = (Filename.chop_suffix file ".mls") ^ ".ml" in
     let c = open_out ml in
     Ocaml_printer.output_ocaml c imp_prg !main_node !steps;

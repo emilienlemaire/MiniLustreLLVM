@@ -4,4 +4,4 @@ val llvm_module: Llvm.llmodule
 
 val llvm_builder: Llvm.llbuilder
 
-val compile: Ast_lib.Imp_ast.m_node list -> Llvm.llvalue list
+val compile: Ast_lib.Imp_ast.m_node list -> string -> int -> Llvm.llvalue list
