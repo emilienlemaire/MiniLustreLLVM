@@ -1,17 +1,11 @@
 (*TODO: Clean this file, OMG it's so ugly, why?????*)
-(*FIXME: For nodes with tuple return:
-    - Make the return type i64
-    - For values where stored, we should have am hashtable so that we can cast it in llvm
-*)
 open Ast_lib.Imp_ast
 open Ast_lib.Asttypes
 
 module Ss = Set.Make(String)
 
 let llvm_context = Llvm.global_context ()
-
 let llvm_module = Llvm.create_module llvm_context "test"
-
 let llvm_builder = Llvm.builder llvm_context
 
 let node_ret_struct = Hashtbl.create 64
@@ -30,7 +24,6 @@ let i32_ty = Llvm.i32_type llvm_context
 let i64_ty = Llvm.i64_type llvm_context
 let float_ty = Llvm.float_type llvm_context
 let double_ty = Llvm.double_type llvm_context
-(*FIXME: This is not viable for strings, as we need an array instead of a pointer*)
 let string_ty = Llvm.pointer_type (Llvm.i8_type llvm_context)
 
 let llvm_false = Llvm.const_int i1_ty 0
@@ -54,11 +47,6 @@ let get_next_tuple () =
     incr tuple_num;
     str
 
-(* TODO: Translate the equations:
-    - For the tuples, we can use structs
-    - Figure out all the string stuff
-    - For the locals, keep a set of string by node so that we can store their values when compiling equations*)
-
 let get_llvm_type typed_var =
     let (_, imp_type) = typed_var in
     match imp_type with
@@ -68,6 +56,7 @@ let get_llvm_type typed_var =
     | Tfloat -> float_ty
     | Tstring -> string_ty
 
+(*TODO: Change to make array*)
 let make_function_type mem_struct args_t ret_t =
     let mem_struct = if Llvm.is_opaque mem_struct then
             []
@@ -93,19 +82,14 @@ let get_struct_size typ =
         |> int_of_float
 
 let make_return_type ret_t name =
-    if List.length ret_t = 0 then
-        void_ty
-    else if List.length ret_t = 1 then
-        (
-        assert ((List.length ret_t) > 0);
-        get_llvm_type (List.hd ret_t)
-        )
-    else
+    match ret_t with
+    | [] ->    void_ty
+    | hd::[] ->    get_llvm_type hd
+    | _ ->
         let struct_type = Llvm.named_struct_type llvm_context ("ret_" ^ name) in
         Llvm.struct_set_body struct_type (Array.of_list (List.map get_llvm_type ret_t)) false;
         Hashtbl.add node_ret_struct name struct_type;
         let size = get_struct_size struct_type in
-        let size = (size / 2) + (size mod 2) in
         if size > 1 then
             Llvm.array_type i64_ty size
         else
@@ -210,19 +194,10 @@ let init_node mem_struct node =
     Llvm.build_ret struct_alloca llvm_builder
 
 let make_eq_type eq =
-    (* Printf.printf "Equation is size %d \n" (List.length eq.meq_patt); *)
     let typ = if List.length eq.meq_patt = 1 then
-        (* let (name, typ) = (List.hd eq.meq_patt) in *)
-        (* if typ = Tunit then
-            Printf.printf "Eq val %s is unit\n" name; *)
-        (
-        assert ((List.length eq.meq_patt) > 0);
         get_llvm_type (List.hd eq.meq_patt)
-        )
     else
         let types = List.map (fun t_var ->
-            (* if typ = Tunit then
-                Printf.printf "Eq val %s is unit\n" name; *)
             get_llvm_type t_var
         ) eq.meq_patt in
         let struct_typ = Llvm.named_struct_type llvm_context (
@@ -231,18 +206,11 @@ let make_eq_type eq =
         Llvm.struct_set_body struct_typ (Array.of_list types) false;
         struct_typ
     in
-    (* if not (Llvm.type_is_sized typ) then
-        Printf.printf "Type is not sized %s\n" (Llvm.string_of_lltype typ); *)
     typ
 
-(* NOTE: When evaluating (if false then print1 () else print2 ()) both prints are evaluated (cf. node
-   draw_pendulum, eq "o=" but this should not be a problem thanks to the normalization *)
-(*TODO: Better handling of unit values *)
-(*FIXME: We should sanityze the equations first, so we can remove primes unit mem accesses *)
 let rec compile_expr typ ({mn_name = name;_ } as node) ({mexpr_desc = expr; _} as _e) =
     let named_llvalues = Hashtbl.find node_vars_llvalue name in
     match expr with
-    (* | _ -> () *)
     | ME_const cst ->
             llvalue_of_const cst
     | ME_ident id ->
@@ -334,8 +302,10 @@ let rec compile_expr typ ({mn_name = name;_ } as node) ({mexpr_desc = expr; _} a
                     let _ = Llvm.build_store call cast llvm_builder in
                     ()
                 else
+                    let call_ret_val = Llvm.build_alloca (Llvm.type_of call) "" llvm_builder in
+                    let _ = Llvm.build_store call call_ret_val llvm_builder in
                     let struct_cast = Llvm.build_bitcast struct_val (Llvm.pointer_type i8_ty) "" llvm_builder in
-                    let call_cast   = Llvm.build_bitcast call (Llvm.pointer_type i8_ty) "" llvm_builder in
+                    let call_cast   = Llvm.build_bitcast call_ret_val (Llvm.pointer_type i8_ty) "" llvm_builder in
                     let mem_cpy_fun = Option.get (Llvm.lookup_function "llvm.memcpy.p0i8.p0i8.i64" llvm_module) in
                     let _ = Llvm.build_call mem_cpy_fun [|struct_cast; call_cast; Llvm.size_of node_typ; llvm_false|] "" llvm_builder in
                     ()
@@ -343,7 +313,7 @@ let rec compile_expr typ ({mn_name = name;_ } as node) ({mexpr_desc = expr; _} a
                 struct_val
             else
                 Llvm.build_unreachable llvm_builder
-    | ME_prim (p_name, args, _) -> (*string * m_expr list * int: name of prim, arg list, length or returned tuple*)
+    | ME_prim (p_name, args, _) -> (*string * m_expr list * int: name of prim, arg list, length of returned tuple*)
         let l = List.map (compile_expr typ node) args in
         (match p_name with
         | "int_of_float" ->
@@ -408,6 +378,7 @@ let rec compile_expr typ ({mn_name = name;_ } as node) ({mexpr_desc = expr; _} a
         | "get_mouse" -> failwith (Printf.sprintf "Prim %s not yet implemented" p_name)
         | p -> failwith (Printf.sprintf "%s is not a prim" p)
         )
+    (*TODO: Add branch to phi node *)
     | ME_if (cond, then_e, else_e) ->
         let curr_f = Hashtbl.find node_vals (name^"_step") in
         let bbs = Llvm.basic_blocks curr_f in
@@ -425,77 +396,76 @@ let rec compile_expr typ ({mn_name = name;_ } as node) ({mexpr_desc = expr; _} a
         Llvm.position_at_end phi_b llvm_builder;
         Llvm.build_phi [(then_val, then_b); (else_val, else_b)] "" llvm_builder
     | ME_print el ->
-            (*TODO: Add printing for other types*)
-            let print_str = List.fold_left (fun acc {mexpr_type = typ; _} ->
-                let space = if acc = "" then "" else " " in
-                match typ with
-                | [Tstring] -> acc^space^"%s"
-                | [Tbool] -> acc^space^"%d"
-                | [Tfloat] -> acc^space^"%f"
-                | [Tint] -> acc^space^"%d"
-                | _ -> failwith "Type not implemented yet"
-            ) "" el in
-            let print_str = print_str^"\n" in
-            let func = Option.get (Llvm.lookup_function "printf" llvm_module) in
-            let str = Llvm.const_stringz llvm_context print_str in
-            let str = Llvm.define_global (get_next_str ()) str llvm_module in
-            Llvm.set_global_constant true str;
-            Llvm.set_linkage Llvm.Linkage.Private str;
-            Llvm.set_unnamed_addr true str;
-            let vals = List.map (fun elt ->
-                let e = compile_expr typ node elt in
-                if elt.mexpr_type = [Tstring] then
-                    Llvm.define_global (get_next_str ()) e llvm_module
-                else
-                    e
-            ) el in
-            let geps = List.map (fun llval ->
-                let gep_idx = [|Llvm.const_int i64_ty 0; Llvm.const_int i64_ty 0|] in
-                (*TODO: For pointers too*)
-                let class_ty = Llvm.classify_type (Llvm.type_of llval) in
-                if  class_ty = Llvm.TypeKind.Array then
+        let print_str = List.fold_left (fun acc {mexpr_type = typ; _} ->
+            let space = if acc = "" then "" else " " in
+            match typ with
+            | [Tstring] -> acc^space^"%s"
+            | [Tbool] -> acc^space^"%d"
+            | [Tfloat] -> acc^space^"%f"
+            | [Tint] -> acc^space^"%d"
+            | _ -> failwith "Type not implemented yet"
+        ) "" el in
+        let print_str = print_str^"\n" in
+        let func = Option.get (Llvm.lookup_function "printf" llvm_module) in
+        let str = Llvm.const_stringz llvm_context print_str in
+        let str = Llvm.define_global (get_next_str ()) str llvm_module in
+        Llvm.set_global_constant true str;
+        Llvm.set_linkage Llvm.Linkage.Private str;
+        Llvm.set_unnamed_addr true str;
+        let vals = List.map (fun elt ->
+            let e = compile_expr typ node elt in
+            if elt.mexpr_type = [Tstring] then
+                Llvm.define_global (get_next_str ()) e llvm_module
+            else
+                e
+        ) el in
+        let geps = List.map (fun llval ->
+            let gep_idx = [|Llvm.const_int i64_ty 0; Llvm.const_int i64_ty 0|] in
+            let class_ty = Llvm.classify_type (Llvm.type_of llval) in
+            if  class_ty = Llvm.TypeKind.Array then
+                Llvm.build_gep llval gep_idx "" llvm_builder
+            else if class_ty = Llvm.TypeKind.Pointer then
+                let elt_ty = Llvm.classify_type (Llvm.element_type (Llvm.type_of llval)) in
+                if elt_ty = Llvm.TypeKind.Array then
                     Llvm.build_gep llval gep_idx "" llvm_builder
-                else if class_ty = Llvm.TypeKind.Pointer then
-                    let elt_ty = Llvm.classify_type (Llvm.element_type (Llvm.type_of llval)) in
-                    if elt_ty = Llvm.TypeKind.Array then
-                        Llvm.build_gep llval gep_idx "" llvm_builder
-                    else if elt_ty = Llvm.TypeKind.Float then
-                        let load = Llvm.build_load llval "" llvm_builder in
-                        Llvm.build_fpext load double_ty "" llvm_builder
-                    else
-                        Llvm.build_load llval "" llvm_builder
+                else if elt_ty = Llvm.TypeKind.Float then
+                    let load = Llvm.build_load llval "" llvm_builder in
+                    Llvm.build_fpext load double_ty "" llvm_builder
                 else
-                    llval
-            ) (str::vals) in
-            let args = Array.of_list geps in
-            Llvm.build_call func args "" llvm_builder
+                    Llvm.build_load llval "" llvm_builder
+            else
+                llval
+        ) (str::vals) in
+        let args = Array.of_list geps in
+        Llvm.build_call func args "" llvm_builder
     | ME_tuple el ->
-            let llvals = List.rev (clean_compile typ node el) in
-            let named_llvals = Hashtbl.find node_vars_llvalue node.mn_name in
-            let lltyps = List.map (fun elt ->
-                let name = Llvm.value_name elt in
-                if (List.assoc_opt name named_llvals) = None then
-                    Llvm.type_of elt
-                else
-                    Llvm.element_type (Llvm.type_of elt)
-            ) llvals in
-            let tuple_typ = Llvm.named_struct_type llvm_context (get_next_tuple ()) in
-            Llvm.struct_set_body tuple_typ (Array.of_list lltyps) false;
-            let tuple_struct = Llvm.build_alloca tuple_typ "" llvm_builder in
-            (*On sauvegarde les valeurs dans le tuple*)
-            List.iteri (fun idx elt ->
-                let gep = Llvm.build_struct_gep tuple_struct idx "" llvm_builder in
-                (* let ptr = Llvm.build_load gep "" llvm_builder in *)
-                let name = Llvm.value_name elt in
-                let llval = match (List.assoc_opt name named_llvalues) with
-                | Some _ -> Llvm.build_load elt "" llvm_builder
-                | None   -> elt
-                in
-                (* Llvm.dump_module llvm_module; *)
-                let _ = Llvm.build_store llval gep llvm_builder in
-                ()
-            ) llvals;
-            tuple_struct
+        let llvals = List.rev (clean_compile typ node el) in
+        let named_llvals = Hashtbl.find node_vars_llvalue node.mn_name in
+        let lltyps = List.map (fun elt ->
+            let name = Llvm.value_name elt in
+            if (List.assoc_opt name named_llvals) = None then
+                Llvm.type_of elt
+            else
+                Llvm.element_type (Llvm.type_of elt)
+        ) llvals in
+        let tuple_typ = Llvm.named_struct_type llvm_context (get_next_tuple ()) in
+        Llvm.struct_set_body tuple_typ (Array.of_list lltyps) false;
+        let tuple_struct = Llvm.build_alloca tuple_typ "" llvm_builder in
+        (*On sauvegarde les valeurs dans le tuple*)
+        List.iteri (fun idx elt ->
+            let gep = Llvm.build_struct_gep tuple_struct idx "" llvm_builder in
+            (* let ptr = Llvm.build_load gep "" llvm_builder in *)
+            let name = Llvm.value_name elt in
+            let llval = match (List.assoc_opt name named_llvalues) with
+            | Some _ -> Llvm.build_load elt "" llvm_builder
+            | None   -> elt
+            in
+            (* Llvm.dump_module llvm_module; *)
+            let _ = Llvm.build_store llval gep llvm_builder in
+            ()
+        ) llvals;
+        tuple_struct
+
 and clean_compile typ node =
     List.fold_left (fun acc elt ->
         let c = compile_expr typ node elt in
@@ -505,7 +475,6 @@ and clean_compile typ node =
             c::acc
     ) []
 
-(*TODO: If the typ is void, we should check if it's an application *)
 let compile_equation node eq =
     let typ = make_eq_type eq in
     let named_llvals = Hashtbl.find node_vars_llvalue node.mn_name in
@@ -513,20 +482,18 @@ let compile_equation node eq =
         let llvalue = compile_expr typ node eq.meq_expr in
         if (List.length eq.meq_patt) > 1 then
             begin
-            (* Llvm.dump_module llvm_module; *)
             let l = List.mapi (fun idx elt ->
                 let (name, _) = elt in
                 let gep = Llvm.build_struct_gep llvalue idx "" llvm_builder in
                 let value = Llvm.build_load gep "" llvm_builder in
                 let ptr = List.assoc name named_llvals in
-                (* Llvm.dump_module llvm_module; *)
                 Llvm.build_store value ptr llvm_builder
             ) (List.rev eq.meq_patt) in
             assert ((List.length l) > 0);
             List.hd (List.rev l)
             end
         else
-            if (List.length eq.meq_patt) = 0 then
+            if List.length eq.meq_patt = 0 then
                 llvalue
             else
                 let (name, _) = (List.hd eq.meq_patt) in
@@ -541,7 +508,6 @@ let compile_equation node eq =
         Llvm.build_ret_void llvm_builder
 
 let compile_node node =
-    (* print_endline (Printf.sprintf "Working on node %s ----------------" node.mn_name); *)
     let mem_struct = make_mem_struct node in
     let _ = if not (Llvm.is_opaque mem_struct) then
             init_node mem_struct node
@@ -572,7 +538,7 @@ let compile_node node =
     let ret_b = Llvm.append_block llvm_context "ret_b" func_val in
     let local_vars = node.mn_local@node.mn_output_step in
     let llvalues = alloc_locals local_vars in
-    let name_llvalues = List.map( fun value ->
+    let name_llvalues = List.map (fun value ->
         (Llvm.value_name value, value)
     ) llvalues in
     let name_llvalues = (List.map (fun elt ->
@@ -586,6 +552,7 @@ let compile_node node =
     let _ = Llvm.build_br ret_b llvm_builder in
     Llvm.position_at_end ret_b llvm_builder;
     let output_names = List.map (fun (n, _) -> n) (List.rev output_list) in
+    (*TODO: Compute update of mem here*)
     let ret_list = List.map (fun n -> List.assoc n name_llvalues) output_names in
     match ret_list with
     | [] -> Llvm.build_ret_void llvm_builder
@@ -594,13 +561,10 @@ let compile_node node =
     | _ ->
         let ret_struct = Hashtbl.find node_ret_struct func_name in
         let struct_val = Llvm.build_alloca ret_struct "" llvm_builder in
-        (* Llvm.dump_module llvm_module; *)
-        flush_all ();
         List.iteri (fun idx elt ->
             let gep = Llvm.build_struct_gep struct_val idx "" llvm_builder in
             let llval = Llvm.build_load elt "" llvm_builder in
             let _ = Llvm.build_store llval gep llvm_builder in
-            (* Llvm.dump_module llvm_module; *)
             ()
         ) ret_list;
         let ret_val = if (Llvm.classify_type llvm_ret_type) = Llvm.TypeKind.Integer then
@@ -635,6 +599,8 @@ let compile nodes =
     let _ = Llvm.declare_function "\x01_strtof" strtof_typ llvm_module in
     let _ = Llvm.declare_function "llvm.memcpy.p0i8.p0i8.i64" mem_cpy_typ llvm_module in
     let l = List.map compile_node sanityzed_nodes in
+    (*TODO: Add the main node if it is set*)
+    (*TODO: Make the module printed to a file / maybe made into an executable *)
     Llvm.dump_module llvm_module;
     l
 
