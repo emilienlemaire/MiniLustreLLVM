@@ -207,28 +207,40 @@ let print_graphics_preamble () =
   print_string "let _x' = Graphics.auto_synchronize false;;\n";
   print_string "\n"
 
-let print_run main =
-  printf "let wait () = try Thread.delay 0.01 with _ -> ()\n";
-  printf "\n";
-  printf "let run f_init f_step =\n";
-  printf "  let mem = f_init () in\n";
-  printf "  while true do\n";
-  printf "    Graphics.clear_graph ();\n";
-  printf "    f_step mem ();\n";
-  printf "    Graphics.synchronize();\n";
-  printf "    wait()\n";
-  printf "  done\n";
-  printf "\n";
-  printf "let _ = run %s_init %s_step" main main
+let print_run main steps =
+  match steps with
+  | -1 ->
+      printf "let wait () = try Thread.delay 0.01 with _ -> ()\n";
+      printf "\n";
+      printf "let run f_init f_step =\n";
+      printf "  let mem = f_init () in\n";
+      printf "  while true do\n";
+      printf "    Graphics.clear_graph ();\n";
+      printf "    f_step mem ();\n";
+      printf "    Graphics.synchronize();\n";
+      printf "    wait()\n";
+      printf "  done\n";
+      printf "\n";
+      printf "let _ = run %s_init %s_step" main main
+  | n ->
+      printf "let run f_init f_step =\n";
+      printf "  let mem = f_init () in\n";
+      printf "  let i = ref 0 in\n";
+      printf "  while !i < %d do\n" n;
+      printf "    f_step mem ();\n";
+      printf "    incr i;\n";
+      printf "  done\n";
+      printf "\n";
+      printf "let _ = run %s_init %s_step" main main
 
 let _ = set_max_boxes max_int
 
-let output_ocaml oc f main =
+let output_ocaml oc f main steps =
   set_formatter_out_channel oc;
   print_preamble ();
   printf "@\n";
-  print_graphics_preamble ();
+  if steps = ~-1 then print_graphics_preamble ();
   printf "@\n";
   List.iter output_node f;
-  if main <> "" then print_run main;
+  if main <> "" then print_run main steps;
   print_flush ()

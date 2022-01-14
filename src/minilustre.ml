@@ -20,6 +20,7 @@ let sched_only = ref false
 let lucy_printer = ref false
 let ocaml_printer = ref true
 let main_node = ref ""
+let steps = ref ~-1
 let verbose = ref false
 
 let spec =
@@ -28,6 +29,7 @@ let spec =
    "-norm-only", Arg.Set norm_only, "  stops after normalization";
    "-sched-only", Arg.Set sched_only, "  stops after scheduling";
    "-main", Arg.Set_string main_node, "<name>  main node";
+   "-steps", Arg.Set_int steps, "<int>  steps of test";
    "-verbose", Arg.Set verbose, "print intermediate transformations";
    "-v", Arg.Set verbose, "print intermediate transformations";
   ]
@@ -86,7 +88,7 @@ let () =
     let _ = Target_lib.Mls_llvm.compile imp_prg in
     let ml = (Filename.chop_suffix file ".mls") ^ ".ml" in
     let c = open_out ml in
-    Ocaml_printer.output_ocaml c imp_prg !main_node;
+    Ocaml_printer.output_ocaml c imp_prg !main_node !steps;
     close_out c;
     exit 0
   with
