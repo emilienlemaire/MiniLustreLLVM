@@ -3,3 +3,7 @@ _build/
 minilustre
 examples/*.ml
 *.ll
+examples/*.*o
+examples/*.*cm*
+a.out
+test.cpp
