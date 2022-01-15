@@ -593,13 +593,40 @@ let mem_cpy_params_t = [|Llvm.pointer_type i8_ty; Llvm.pointer_type i8_ty; i64_t
 let mem_cpy_typ = Llvm.function_type void_ty mem_cpy_params_t
 
 
-let paul_tests steps =
-  let func = Llvm.(define_function "main" (Llvm.function_type i32_ty [||]) llvm_module) in
-  let entry_block = (Llvm.basic_blocks func).(0) in
+let mk_main _main steps =
+
+  let steps = Llvm.const_int i32_ty steps in
+  let zero = Llvm.const_int i32_ty 0 in
+  let one = Llvm.const_int i32_ty 1 in
+  let func_val = Llvm.(define_function "main" (Llvm.function_type i32_ty [||]) llvm_module) in
+
+  let entry_block = (Llvm.basic_blocks func_val).(0) in
+  let cond_block = Llvm.append_block llvm_context "cond" func_val in
+  let loop_block = Llvm.append_block llvm_context "loop" func_val in
+  let ret_block = Llvm.append_block llvm_context "ret" func_val in
+
+  (* entry *)
   Llvm.position_at_end entry_block llvm_builder;
-  let ret_val = Llvm.build_alloca i32_ty "" llvm_builder in
-  let _ = Llvm.build_store (Llvm.const_int i32_ty steps) ret_val llvm_builder in
-  let _ = Llvm.build_ret ret_val llvm_builder in
+  let idx = Llvm.build_alloca i32_ty "" llvm_builder in
+  let _ = Llvm.build_store zero idx llvm_builder in
+
+  (* cond *)
+  let _ = Llvm.build_br cond_block llvm_builder in
+  Llvm.position_at_end cond_block llvm_builder;
+  let idx_val = Llvm.build_load idx "" llvm_builder in
+  let comp_val = Llvm.build_icmp Llvm.Icmp.Slt idx_val steps "" llvm_builder in
+  let _ = Llvm.build_cond_br comp_val loop_block ret_block llvm_builder in
+
+  (* loop *)
+  Llvm.position_at_end loop_block llvm_builder;
+  let added = Llvm.build_nsw_add idx one "" llvm_builder in
+  let _ = Llvm.build_store added idx llvm_builder in
+  let _ = Llvm.build_br cond_block llvm_builder in
+
+  (* ret *)
+  Llvm.position_at_end ret_block llvm_builder;
+  let _ = Llvm.build_ret zero llvm_builder in
+
   ()
 
 let compile nodes main steps =
@@ -612,7 +639,7 @@ let compile nodes main steps =
     (*TODO: Add the main node if it is set*)
     (*TODO: Make the module printed to a file / maybe made into an executable *)
     if main <> "" then begin
-        paul_tests steps
+        mk_main main steps
     end;
     Llvm.dump_module llvm_module;
     l
