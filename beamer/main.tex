@@ -10,7 +10,7 @@
 \usepackage{babel}
 \usepackage{xcolor} % to access the named colour LightGray
 \usepackage{minted}
-% \usemintedstyle{vs}
+\usepackage{pgfplots} % package used to implement the plot
 
 %%%START THEME SETTINGS
 \usetheme{CambridgeUS}
@@ -30,8 +30,9 @@
 \setbeamercolor{section number projected}{fg=mred, bg=mred,fg=white}
 \setbeamercolor{subsection number projected}{fg=mred, bg=mred,fg=white}
 \setbeamertemplate{itemize item}{\color{mred}$\blacksquare$}
-\setbeamertemplate{enumerate item}{\color{mred}$\blacktriangleright$}
-\setbeamertemplate{enumerate item}{\color{mred}$\blacklozenge$}
+\setbeamertemplate{itemize item item}{\color{mred}$\blacksquare$}
+% \setbeamertemplate{enumerate item}{\color{mred}$\blacktriangleright$}
+\setbeamertemplate{enumerate item}{\color{mred}$\bullet$}
 
 \setbeamercovered{transparent}
 %%%END THEME SETTINGS
@@ -46,6 +47,12 @@
 
 \newcommand{\ocaml}[1]{\mintinline{ocaml}{#1}}
 
+\newcommand{\angArr}{
+    \rotatebox[origin=c]{180}{$\Lsh$}
+}
+
+\pgfplotsset{width=6.5cm, compat=1.17}
+
 \begin{document}
 %------------------------------------------------------
 
@@ -53,33 +60,158 @@
     \titlepage
 \end{frame}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Introduction}
-
-\subsection{TopLevel Ocaml}
-
-\begin{frame}[fragile]{Comment vérifier le typage ?}
-  \begin{minted}[baselinestretch=1.2,fontsize=\footnotesize]{llvm}
-define dso_local i32 @main() #0 {
-  %1 = alloca i32, align 4
-  %2 = alloca i32, align 4
-  %3 = alloca i32, align 4
-  store i32 1, i32* %1, align 4
-  store i32 1, i32* %2, align 4
-  %4 = load i32, i32* %1, align 4
-  %5 = load i32, i32* %2, align 4
-  %6 = add nsw i32 %4, %5
-  store i32 %6, i32* %3, align 4
-  %7 = load i32, i32* %3, align 4
-  %8 = call i32 (i8*, ...)
-        @printf(i8* getelementptr inbounds
-                    ([4 x i8], [4 x i8]* @.str, i64 0, i64 0), i32 %7)
-  ret i32 0
-}
-   \end{minted}
-\end{frame}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{frame}
     \tableofcontents[currentsection]
 \end{frame}
+
+\begin{frame}[fragile]{Présentation Générale}
+            \vfill
+    \begin{itemize}
+        \item
+            Utilisation de l'interface C++ de LLVM par les bingings OCaml\\\vspace*{0.2cm}
+            $\qquad\angArr$ \ocaml{Llvm.declare_function "main"} ...
+
+        \vspace*{1cm}\item
+            Génération du code LLVM IR (fichiers .ll)
+  \begin{minted}[baselinestretch=1.2,fontsize=\footnotesize]{llvm}
+  declare i32 @main() #0 {
+    entry:
+        ...
+  }
+   \end{minted}
+    \end{itemize}
+            \vfill
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Présentation LLVM}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}{Pourquoi compiler vers LLVM ?}
+    \vfill
+    \begin{itemize}
+        \item “Assembleur de haut niveau”
+        \begin{enumerate}
+            \item Typage
+            \item Pointeurs
+            \item Vecteurs
+            \item Tableaux
+            \item Structures
+            \item Fonctions
+            \item ...
+        \end{enumerate}
+    \vfill \item Bindings simples d'utilisation
+    \vfill \item Compilateur optimisant vers toutes les architectures
+    \end{itemize}
+    \vfill
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Utilisation LLVM}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.6\textwidth]{imgs/compilation.png}
+    \end{figure}
+\end{frame}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Travail Réalisé}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}
+    \tableofcontents[currentsection]
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Montrer un peu le code}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}[fragile]{Exemple de transformation}
+    \begin{columns}
+    \begin{column}{0.25\textwidth}
+  \begin{minted}[baselinestretch=1.2,fontsize=\footnotesize]{ocaml}
+    let a = 2 in
+    let a = 2 in
+    let a = 2 in
+    let a = 2 in
+    let a = 2 in
+    let a = 2 in
+    let a = 2 in
+    let a = 2 in
+   \end{minted}
+    \end{column}
+    \begin{column}{0.05\textwidth}
+        $\mapsto$
+    \end{column}
+    \begin{column}{0.70\textwidth}  %%<--- here
+  \begin{minted}[baselinestretch=1.2,fontsize=\footnotesize]{llvm}
+store float %11, float* %aux4, align 4
+%12 = load float, float* %aux4, align 4
+store float %12, float* %f, align 4
+%13 = alloca %tuple_t_0, align 8
+%14 = getelementptr inbounds %tuple_t_0, %tuple_t_0* %13, i32 0, i32 0
+%15 = load i32, i32* %aux1, align 4
+store i32 %15, i32* %14, align 4
+   \end{minted}
+    \end{column}
+    \end{columns}
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Benchmarks}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}{Performances}
+    \begin{table}[h]
+        \begin{center}
+            \begin{tabular}{|r|c|c|c|}\hline
+                                & file1.mls & file2.mls & file3.mls \\ \hline\hline
+                          OCaml & 11s       & 9s        & 19s       \\ \hline
+                          LLVM  & 9s        & 8s        & 1s        \\ \hline
+                          % Lustre compiler & 11s       & 9s        & 19s       \\ \hline
+            \end{tabular}
+            \caption{Table des performances comparées en fonction du langage cible}
+        \end{center}
+    \end{table}
+\end{frame}
+
+\begin{frame}
+    \begin{tikzpicture}
+        \begin{axis}
+            [
+            ybar, % ybar command displays the graph in horizontal form, while the xbar command displays the graph in vertical form.
+            enlargelimits=0.15,% these limits are used to shrink or expand the graph. The lesser the limit, the higher the graph will expand or grow. The greater the limit, the more graph will shrink.
+            legend style={at={(0.4,-0.25)}, % these are the measures of the bottom row containing surplus (wheat, Tea, rice), where -0.25 is the gap between the bottom row and the graph.
+            anchor=north,legend columns=-1},
+            % here, north is the position of the bottom legend row. You can specify the east, west, or south direction to shift the location.
+            symbolic x coords={Ex1, Ex2, Ex3},
+            xtick=data,
+            nodes near coords,
+            nodes near coords align={vertical},
+            ]
+            \addplot coordinates {(Ex1, 75) (Ex2, 78) (Ex3, 80)}; % these are the measures of a particular bar graph. The tick marks of the y-axis will be adjusted automatically according to the data values entered in the coordinates.
+            \addplot coordinates {(Ex1, 70) (Ex2, 63) (Ex3, 68)};
+            \legend{LLVM, OCaml}
+
+        \end{axis}
+    \end{tikzpicture}
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Démonstration}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}
+    En direct
+\end{frame}
+
 
 \end{document}

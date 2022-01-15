@@ -106,17 +106,17 @@ let () =
     exit 0
   with
     | Lexical_error s ->
-	report_loc (lexeme_start_p lb, lexeme_end_p lb);
-	eprintf "lexical error: %s\n@." s;
-	exit 1
+        report_loc (lexeme_start_p lb, lexeme_end_p lb);
+        eprintf "lexical error: %s\n@." s;
+        exit 1
     | Parsing.Parse_error ->
-	report_loc (lexeme_start_p lb, lexeme_end_p lb);
-	eprintf "syntax error\n@.";
-	exit 1
+        report_loc (lexeme_start_p lb, lexeme_end_p lb);
+        eprintf "syntax error\n@.";
+        exit 1
     | Typing.Error(l,e) ->
-	report_loc l;
-	eprintf "%a\n@." Typing.report e;
-	exit 1
+        report_loc l;
+        eprintf "%a\n@." Typing.report e;
+        exit 1
     | e ->
-	eprintf "Anomaly: %s\n@." (Printexc.to_string e);
-	exit 2
+        eprintf "Anomaly: %s\n@." (Printexc.to_string e);
+        exit 2

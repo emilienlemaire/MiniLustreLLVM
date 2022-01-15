@@ -59,6 +59,15 @@ let get_llvm_type typed_var =
   | Tfloat -> float_ty
   | Tstring -> string_ty
 
+(*TODO: Change to make array*)
+let make_function_type mem_struct args_t ret_t =
+    let mem_struct = if Llvm.is_opaque mem_struct then
+            []
+        else
+            [Llvm.pointer_type mem_struct]
+    in
+    Llvm.function_type ret_t (Array.of_list (mem_struct@args_t))
+
 let rec _get_struct_size_f typ =
   let body = Llvm.struct_element_types typ in
   Array.fold_left (fun acc typ ->
