@@ -235,11 +235,11 @@ let print_run main steps =
 
 let _ = set_max_boxes max_int
 
-let output_ocaml oc f main steps =
+let output_ocaml oc f main steps graphics =
   set_formatter_out_channel oc;
   print_preamble ();
   printf "@\n";
-  if steps = ~-1 then print_graphics_preamble ();
+  if graphics then print_graphics_preamble ();
   printf "@\n";
   List.iter output_node f;
   if main <> "" then print_run main steps;

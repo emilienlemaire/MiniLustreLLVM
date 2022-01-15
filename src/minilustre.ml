@@ -22,16 +22,18 @@ let ocaml_printer = ref true
 let main_node = ref ""
 let steps = ref ~-1
 let verbose = ref false
+let graphics = ref false
 
 let spec =
-  ["-parse-only", Arg.Set parse_only, "  stops after parsing";
-   "-type-only", Arg.Set type_only, "  stops after typing";
-   "-norm-only", Arg.Set norm_only, "  stops after normalization";
-   "-sched-only", Arg.Set sched_only, "  stops after scheduling";
-   "-main", Arg.Set_string main_node, "<name>  main node";
-   "-steps", Arg.Set_int steps, "<int>  steps of test";
-   "-verbose", Arg.Set verbose, "print intermediate transformations";
-   "-v", Arg.Set verbose, "print intermediate transformations";
+  ["-parse-only", Arg.Set parse_only,       "  stops after parsing";
+   "-type-only",  Arg.Set type_only,        "  stops after typing";
+   "-norm-only",  Arg.Set norm_only,        "  stops after normalization";
+   "-sched-only", Arg.Set sched_only,       "  stops after scheduling";
+   "-main",       Arg.Set_string main_node, "<name>  main node";
+   "-steps",      Arg.Set_int steps,        "<int>  steps of test";
+   "-verbose",    Arg.Set verbose,          "print intermediate transformations";
+   "-graphics",   Arg.Set graphics,         "add graphics context in .ml generated";
+   "-v",          Arg.Set verbose,          "print intermediate transformations";
   ]
 
 let file =
@@ -88,7 +90,7 @@ let () =
     let _ = Target_lib.Mls_llvm.compile imp_prg !main_node !steps in
     let ml = (Filename.chop_suffix file ".mls") ^ ".ml" in
     let c = open_out ml in
-    Ocaml_printer.output_ocaml c imp_prg !main_node !steps;
+    Ocaml_printer.output_ocaml c imp_prg !main_node !steps !graphics;
     close_out c;
     exit 0
   with
