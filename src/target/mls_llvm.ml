@@ -64,9 +64,9 @@ let make_function_type mem_struct args_t ret_t =
     let mem_struct = if Llvm.is_opaque mem_struct then
             []
         else
-            [Llvm.pointer_type mem_struct]
-            (* FIXME: coucou mettre un truc genre en dessous *)
-            (* Llvm.struct_type *)
+            (* [Llvm.pointer_type mem_struct] *)
+            (* FIXME: Emilien c'est bien ça ? *)
+          [Llvm.struct_type llvm_context [|mem_struct|]]
     in
     Llvm.function_type ret_t (Array.of_list (mem_struct@args_t))
 
