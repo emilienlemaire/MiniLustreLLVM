@@ -7,3 +7,7 @@ examples/*.*o
 examples/*.*cm*
 a.out
 test.cpp
+
+examples/simple.ll.exe
+examples/simple.ml.native
+examples/simple.s
