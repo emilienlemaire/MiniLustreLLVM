@@ -65,6 +65,8 @@ let make_function_type mem_struct args_t ret_t =
             []
         else
             [Llvm.pointer_type mem_struct]
+            (* FIXME: coucou mettre un truc genre en dessous *)
+            (* Llvm.struct_type *)
     in
     Llvm.function_type ret_t (Array.of_list (mem_struct@args_t))
 
@@ -326,6 +328,7 @@ let rec compile_expr typ ({mn_name = name;_ } as node) ({mexpr_desc = expr; _} a
         end
         | _ -> Llvm.build_unreachable llvm_builder
       end
+  (* FIX: ici *)
   | ME_app (n_name, mem_field, args) -> (* string * string * m_expr list: first one name of the func second name of the mem field*)
       let mem_struct_offset = Hashtbl.find mem_struct_attr_offset (name^"_mem") in
       let idx = List.assoc_opt mem_field mem_struct_offset in

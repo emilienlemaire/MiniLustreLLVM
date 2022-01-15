@@ -1,5 +1,6 @@
 *DS_Store
 _build/
+bin/
 minilustre
 examples/*.ml
 *.ll
