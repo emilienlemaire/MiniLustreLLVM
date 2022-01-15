@@ -593,16 +593,16 @@ let mem_cpy_params_t = [|Llvm.pointer_type i8_ty; Llvm.pointer_type i8_ty; i64_t
 let mem_cpy_typ = Llvm.function_type void_ty mem_cpy_params_t
 
 
-let paul_tests _main _steps =
-  let func = Llvm.(define_function "my_main" i32_ty llvm_module) in
+let paul_tests steps =
+  let func = Llvm.(define_function "main" (Llvm.function_type i32_ty [||]) llvm_module) in
   let entry_block = (Llvm.basic_blocks func).(0) in
   Llvm.position_at_end entry_block llvm_builder;
-  let ret_val = Llvm.build_alloca i32_ty "name_var" llvm_builder in
-  let _ = Llvm.build_store (Llvm.const_int i32_ty 0) ret_val llvm_builder in
+  let ret_val = Llvm.build_alloca i32_ty "" llvm_builder in
+  let _ = Llvm.build_store (Llvm.const_int i32_ty steps) ret_val llvm_builder in
   let _ = Llvm.build_ret ret_val llvm_builder in
   ()
 
-let compile nodes _main _steps =
+let compile nodes main steps =
     let sanityzed_nodes = Sanityze.sanityze nodes in
     let _ = Llvm.declare_function "printf" printf_typ llvm_module in
     let _ = Llvm.declare_function "strtol" strtol_typ llvm_module in
@@ -611,7 +611,9 @@ let compile nodes _main _steps =
     let l = List.map compile_node sanityzed_nodes in
     (*TODO: Add the main node if it is set*)
     (*TODO: Make the module printed to a file / maybe made into an executable *)
-    if _main <> "" then paul_tests _main _steps;
+    if main <> "" then begin
+        paul_tests steps
+    end;
     Llvm.dump_module llvm_module;
     l
 
