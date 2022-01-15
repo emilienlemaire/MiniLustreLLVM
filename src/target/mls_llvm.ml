@@ -854,7 +854,6 @@ let compile nodes main steps =
   let _ = Llvm.declare_function "\x01_strtof" strtof_typ llvm_module in
   let _ = Llvm.declare_function "llvm.memcpy.p0i8.p0i8.i64" mem_cpy_typ llvm_module in
   let _ = List.map compile_node sanityzed_nodes in
-  (* TODO: Make the module printed to a file / maybe made into an executable *)
   if main <> "" then begin
     mk_main main steps
   end;

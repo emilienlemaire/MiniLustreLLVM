@@ -14,3 +14,12 @@ simple:
 	ocamlfind ocamlopt -linkpkg -package graphics examples/simple.ml -o bin/simple.ml.exe
 	llc examples/simple.ll
 	clang examples/simple.s -o bin/simple.ll.exe
+
+exec:
+	@echo "-[ OCaml ]-"
+	@echo ""
+	@./bin/simple.ml.exe
+	@echo ""
+	@echo "-[ LLVM ]-"
+	@echo ""
+	@./bin/simple.ll.exe
