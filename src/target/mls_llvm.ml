@@ -173,8 +173,14 @@ let llvalue_of_const cst =
       Llvm.set_linkage Llvm.Linkage.Private str;
       str
 
-(* TODO: faire un fold_left ? *)
+(* TODO: regarde avec Emilien *)
 let remove_void_consts l =
+  let res = List.fold_right (fun e acc ->
+    match e with
+    | _, Cunit -> acc
+    | _ -> e :: acc
+  ) l [] in
+
   let rec loop l acc =
     match l with
       | [] ->
@@ -184,7 +190,9 @@ let remove_void_consts l =
       | hd::tl ->
           loop tl acc@[hd]
   in
-  loop l []
+
+  assert (res = loop l []);
+  res
 
 type init_t =
   | Const of const
@@ -815,10 +823,8 @@ let mk_main main steps =
       None
   in
   let main_arg = match mem_init with
-  | None ->
-          [||]
-  | Some v ->
-          [|v|]
+  | Some v -> [|v|]
+  | None   -> [| |]
   in
 
   (* cond *)
