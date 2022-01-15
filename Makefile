@@ -10,5 +10,5 @@ clean:
 	dune clean
 
 simple:
-	./_build/default/src/minilustre.exe -main n -steps 10000000 examples/simple.mls
+	./_build/default/src/minilustre.exe -main n -steps 1000 examples/simple.mls
 	ocamlfind ocamlopt -linkpkg -package graphics examples/simple.ml

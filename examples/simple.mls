@@ -1,7 +1,7 @@
 node t (k, l: int) returns (i,j, m: int);
 let
   i = 1000 + l;
-  j = 1 + k;
+  j = 1 fby k;
   m = if false then 42 else 15;
 tel
 
@@ -10,5 +10,5 @@ var f: float; k0, k1, k2: int;
 let
   (k0, k1, k2) = t (12, 13);
   f = float_of_string("1.0");
-  o = print(f, k0, k1);
+  o = print(f," ", k0, " ", k1, "\n");
 tel

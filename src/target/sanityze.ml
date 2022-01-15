@@ -94,10 +94,18 @@ let sanityze_compute node =
         else
             acc@[sanityze_eq elt]) []
 
+let sanityze_update  =
+    List.map (fun (attr_name, mlval) ->
+        remove_prime attr_name,
+        match mlval with
+        | Const c -> Const c
+        | Ident id -> Ident (remove_prime id)
+    )
+
 (* TODO: Add sanityzing to the equations *)
 let sanityze_node node =
     let (rm_fby, mem) = sanityze_mem node.mn_mem node.mn_name in
-    { node with
+    {
         mn_name        = remove_prime node.mn_name;
         mn_input_step  = sanityze_var_list node.mn_input_step;
         mn_output_step = sanityze_var_list node.mn_output_step;
@@ -105,6 +113,7 @@ let sanityze_node node =
         mn_mem         = mem;
         mn_init        = sanityze_init node.mn_init rm_fby;
         mn_compute     = sanityze_compute node node.mn_compute;
+        mn_update      = sanityze_update node.mn_update;
     }
 
 let sanityze file =
