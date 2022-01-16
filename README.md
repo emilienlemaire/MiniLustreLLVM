@@ -27,3 +27,13 @@ vers OCaml sur lequel nous avons déjà travaillé, en TP.
 Nous branchons donc notre travail au niveau du l'AST `imp_ast`.
 Ensuite, grâce aux bindings offerts par la librairie OCaml de LLVM, nous contruisons
 un fichier `.ll` à partir de cet AST.
+
+
+## Listes exhausistives pour la compilation
+
+```bash
+$ git clone https://github.com/emilienlemaire/MiniLustreLLVM
+$ cd MiniLustreLLVM
+$ ./install.sh
+$ make
+```
