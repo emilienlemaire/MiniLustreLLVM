@@ -94,7 +94,7 @@ let () =
 
 
     if not !ml_only then begin
-        let llvm = Target_lib.Mls_llvm.compile imp_prg !main_node !steps in
+        let llvm = Target_lib.Mls_llvm.compile file imp_prg !main_node !steps in
         if !verbose then begin
           Format.printf "/**************************************/@.";
           Format.printf "/* LLVM IR                            */@.";
