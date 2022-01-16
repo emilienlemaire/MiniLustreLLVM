@@ -59,15 +59,13 @@ let get_llvm_type typed_var =
   | Tfloat -> float_ty
   | Tstring -> string_ty
 
-(*TODO: Change to make array*)
 let make_function_type mem_struct args_t ret_t =
     let mem_struct =
       if Llvm.is_opaque mem_struct then
         []
       else
-        [Llvm.struct_type llvm_context [|mem_struct|]]
-        (* [Llvm.pointer_type mem_struct] *)
-          (* FIXME: Emilien c'est bien ça ? *)
+        (* [Llvm.struct_type llvm_context [|mem_struct|]] *)
+        [Llvm.pointer_type mem_struct]
     in
     Llvm.function_type ret_t (Array.of_list (mem_struct@args_t))
 
@@ -87,7 +85,18 @@ let get_struct_size typ =
     |> ceil
     |> int_of_float
 
-let make_function_type mem_struct args_t ret_t =
+let get_copy_size typ =
+    let body = Llvm.struct_element_types typ in
+    Llvm.const_int (i64_ty) (Array.fold_left (fun acc typ ->
+        acc + (match (Llvm.classify_type typ) with
+        | Llvm.TypeKind.Integer
+        | Llvm.TypeKind.Float-> 4
+        | Llvm.TypeKind.Struct -> 8
+        | _ -> failwith "Encountered an impossible type"
+        )
+    ) 0 body)
+
+(* let make_function_type mem_struct args_t ret_t =
   if Llvm.is_opaque mem_struct then
       Llvm.function_type ret_t (Array.of_list args_t)
     else
@@ -97,14 +106,12 @@ let make_function_type mem_struct args_t ret_t =
         else
           Llvm.array_type i64_ty (get_struct_size mem_struct))
       in
-      Llvm.function_type ret_t (Array.of_list (struct_typ::args_t))
+      Llvm.function_type ret_t (Array.of_list (struct_typ::args_t)) *)
 
 let make_return_type ret_t name =
   match ret_t with
   | [] ->
       void_ty
-  | hd::[] ->
-      get_llvm_type hd
   | _ ->
       let struct_type = Llvm.named_struct_type llvm_context ("ret_" ^ name) in
       Llvm.struct_set_body struct_type (Array.of_list (List.map get_llvm_type ret_t)) false;
@@ -200,19 +207,15 @@ type init_t =
 
 let init_node mem_struct node =
   let func_name = node.mn_name^"_init" in
-  let struct_size = get_struct_size mem_struct in
-  let ret_typ = if struct_size = 1 then
-      i64_ty
-    else
-        Llvm.array_type i64_ty struct_size
-  in
-  let func_type = Llvm.function_type ret_typ [||] in
+  let func_type = Llvm.function_type void_ty [| Llvm.pointer_type mem_struct |] in
   let func = Llvm.define_function func_name func_type llvm_module in
   let entry_block = (Llvm.basic_blocks func).(0) in
   Llvm.position_at_end entry_block llvm_builder;
   let elem_types = Llvm.struct_element_types mem_struct in
-  let struct_alloca = Llvm.build_alloca mem_struct "mem" llvm_builder in
-  let ret_alloca = Llvm.build_alloca ret_typ "" llvm_builder in
+  let struct_ptr_param  = (Llvm.params func).(0) in
+  let struct_ptr_alloca = Llvm.build_alloca (Llvm.pointer_type mem_struct) "mem_ptr" llvm_builder in
+  let struct_val_alloca = Llvm.build_alloca mem_struct "mem" llvm_builder in
+  let _ = Llvm.build_store struct_ptr_param struct_ptr_alloca llvm_builder in
   let attrs = Hashtbl.find mem_struct_offset_attr (Option.get (Llvm.struct_name mem_struct)) in
   let init_vars = List.fold_left (fun acc (var, cst) ->
       (var, Const cst)::acc
@@ -222,7 +225,7 @@ let init_node mem_struct node =
   ) init_vars node.mn_init.node_init in
   let _ = Array.mapi (fun idx _ ->
     let name = List.assoc idx attrs in
-    let ptr = Llvm.build_struct_gep struct_alloca idx name llvm_builder in
+    let ptr = Llvm.build_struct_gep struct_val_alloca idx name llvm_builder in
     match List.assoc name init_vars with
       | Const cst ->
           let llval = llvalue_of_const cst in
@@ -230,38 +233,17 @@ let init_node mem_struct node =
       | Function name ->
       begin
           let f_init = Hashtbl.find init_funcs name in
-          let call = Llvm.build_call f_init [| |] "" llvm_builder in
-          match Llvm.classify_type (Llvm.type_of call) with
-          | Llvm.TypeKind.Integer ->
-          (* We want to bitcast the struct and store the ret val*)
-                  let cast = Llvm.build_bitcast ptr (Llvm.pointer_type i64_ty) "" llvm_builder in
-                  Llvm.build_store call cast llvm_builder
-          | _ ->
-                  let ret_struct = Llvm.type_of call in
-                  let arr_val = Llvm.build_alloca ret_struct "" llvm_builder in
-                  let arr_ptr = Llvm.build_bitcast arr_val (Llvm.pointer_type i8_ty) "" llvm_builder in
-                  let struct_ptr = Llvm.build_bitcast ptr (Llvm.pointer_type i8_ty) "" llvm_builder in
-                  let mem_cpy_fun = Option.get (Llvm.lookup_function "llvm.memcpy.p0i8.p0i8.i64" llvm_module) in
-                  let _ = Llvm.build_call mem_cpy_fun [|arr_ptr; struct_ptr; Llvm.size_of ret_struct; llvm_false|] "" llvm_builder in
-                  Llvm.build_load arr_val "" llvm_builder
+          Llvm.build_call f_init [| ptr |] "" llvm_builder
       end
   ) elem_types in
+  let struct_ptr_load = Llvm.build_load struct_ptr_alloca "" llvm_builder in
+  let struct_load_bitcast = Llvm.build_bitcast struct_ptr_load (Llvm.pointer_type i8_ty) "" llvm_builder in
+  let struct_val_bitcast  = Llvm.build_bitcast struct_val_alloca (Llvm.pointer_type i8_ty) "" llvm_builder in
+  let mem_cpy_fun = Option.get (Llvm.lookup_function "llvm.memcpy.p0i8.p0i8.i64" llvm_module) in
+  let mem_cpy_args = [|struct_load_bitcast; struct_val_bitcast; (get_copy_size mem_struct); llvm_false|] in
+  let _ = Llvm.build_call mem_cpy_fun mem_cpy_args "" llvm_builder in
   Hashtbl.add init_funcs func_name func;
-  let ret_val =
-      match Llvm.classify_type ret_typ with
-          | Llvm.TypeKind.Integer ->
-                  (* We want to bitcast the struct and store the ret val*)
-                  let cast = Llvm.build_bitcast struct_alloca (Llvm.pointer_type i64_ty) "" llvm_builder in
-                  Llvm.build_load cast "" llvm_builder
-          | _ ->
-                  let arr_ptr = Llvm.build_bitcast ret_alloca (Llvm.pointer_type i8_ty) "" llvm_builder in
-                  let struct_ptr = Llvm.build_bitcast struct_alloca (Llvm.pointer_type i8_ty) "" llvm_builder in
-                  let mem_cpy_fun = Option.get (Llvm.lookup_function "llvm.memcpy.p0i8.p0i8.i64" llvm_module) in
-                  let _ = Llvm.build_call mem_cpy_fun [|arr_ptr; struct_ptr; Llvm.size_of ret_typ; llvm_false|] "" llvm_builder in
-                  Llvm.build_load ret_alloca "" llvm_builder
-  in
-  let ret = Llvm.build_ret ret_val llvm_builder in
-  ret
+  Llvm.build_ret_void llvm_builder
 
 let make_eq_type eq =
   let typ = if List.length eq.meq_patt = 1 then
@@ -303,6 +285,16 @@ let rec compile_expr typ ({mn_name = name;_ } as node) ({mexpr_desc = expr; _} a
       let open Llvm.TypeKind in
       let lhs_val = compile_expr typ node lhs in
       let rhs_val = compile_expr typ node rhs in
+      let lhs_val = if Llvm.classify_type (Llvm.type_of lhs_val) = Llvm.TypeKind.Pointer then
+          Llvm.build_load lhs_val "" llvm_builder
+        else
+            lhs_val
+      in
+      let rhs_val = if Llvm.classify_type (Llvm.type_of rhs_val) = Llvm.TypeKind.Pointer then
+          Llvm.build_load rhs_val "" llvm_builder
+        else
+            rhs_val
+      in
       begin match Llvm.(classify_type (type_of lhs_val), classify_type (type_of rhs_val)) with
         | Integer, Integer -> begin match op with
           | Beq -> Llvm.build_icmp Llvm.Icmp.Eq lhs_val rhs_val "cmp_eq" llvm_builder
@@ -318,7 +310,7 @@ let rec compile_expr typ ({mn_name = name;_ } as node) ({mexpr_desc = expr; _} a
           | Bmod -> Llvm.build_srem lhs_val rhs_val "mod" llvm_builder (*srem for signed remainder*)
           | Band -> Llvm.build_and lhs_val rhs_val "and" llvm_builder
           | Bor -> Llvm.build_or lhs_val rhs_val "or" llvm_builder
-          | _ -> Llvm.build_unreachable llvm_builder
+          | _ -> print_endline "binop int"; Llvm.build_unreachable llvm_builder
         end
         | Float, Float -> begin match op with
             | Beq -> Llvm.build_fcmp Llvm.Fcmp.Ueq lhs_val rhs_val "cmp_eq" llvm_builder
@@ -333,9 +325,12 @@ let rec compile_expr typ ({mn_name = name;_ } as node) ({mexpr_desc = expr; _} a
             | Bdiv_f -> Llvm.build_fdiv lhs_val rhs_val "div" llvm_builder
             | Band -> Llvm.build_and lhs_val rhs_val "and" llvm_builder
             | Bor -> Llvm.build_or lhs_val rhs_val "or" llvm_builder
-            | _ -> Llvm.build_unreachable llvm_builder
+            | _ -> print_endline "binop float"; Llvm.build_unreachable llvm_builder
         end
-        | _ -> Llvm.build_unreachable llvm_builder
+        | _ ->
+            print_endline "binop type";
+            print_endline (Printf.sprintf "%s %s" (Llvm.string_of_llvalue lhs_val) (Llvm.string_of_llvalue rhs_val));
+            Llvm.build_unreachable llvm_builder
       end
   (* FIX: ici *)
   | ME_app (n_name, mem_field, args) -> (* string * string * m_expr list: first one name of the func second name of the mem field*)
@@ -352,23 +347,8 @@ let rec compile_expr typ ({mn_name = name;_ } as node) ({mexpr_desc = expr; _} a
         | Some idx ->
             let mem_obj = List.assoc "mem" named_llvalues in
             let gep = Llvm.build_struct_gep mem_obj idx "" llvm_builder in
-            let gep_val = Llvm.build_load gep "" llvm_builder in
-            let mem_arg = if Llvm.classify_type (Llvm.type_of gep_val) = Llvm.TypeKind.Struct then
-                let size = get_struct_size (Llvm.type_of gep_val) in
-                if size = 1 then
-                    Llvm.build_bitcast gep (Llvm.pointer_type i64_ty) "" llvm_builder
-                else
-                    let arr_alloc = Llvm.build_alloca (Llvm.array_type i64_ty size) "" llvm_builder in
-                    let arr_cast = Llvm.build_bitcast arr_alloc (Llvm.pointer_type i8_ty) "" llvm_builder in
-                    let arg_cast = Llvm.build_bitcast gep (Llvm.pointer_type i8_ty) "" llvm_builder in
-                    let mem_cpy_fun = Option.get (Llvm.lookup_function "llvm.memcpy.p0i8.p0i8.i64" llvm_module) in
-                    let _ = Llvm.build_call mem_cpy_fun [|arr_cast; arg_cast; Llvm.size_of (Llvm.type_of gep_val); llvm_false|] "" llvm_builder in
-                    arr_alloc
-            else
-                gep_val
-            in
             let args_val = List.map (compile_expr typ node) args in
-            mem_arg::args_val
+            gep::args_val
       in
       let args_arr = Array.of_list args_val in
       let callee_name = Printf.sprintf "%s_step" (Sanityze.remove_prime n_name) in
@@ -391,11 +371,11 @@ let rec compile_expr typ ({mn_name = name;_ } as node) ({mexpr_desc = expr; _} a
                 let struct_cast = Llvm.build_bitcast struct_val (Llvm.pointer_type i8_ty) "" llvm_builder in
                 let call_cast = Llvm.build_bitcast call_ret_val (Llvm.pointer_type i8_ty) "" llvm_builder in
                 let mem_cpy_fun = Option.get (Llvm.lookup_function "llvm.memcpy.p0i8.p0i8.i64" llvm_module) in
-                let _ = Llvm.build_call mem_cpy_fun [|struct_cast; call_cast; Llvm.size_of node_typ; llvm_false|] "" llvm_builder in
+                let _ = Llvm.build_call mem_cpy_fun [|struct_cast; call_cast;get_copy_size node_typ; llvm_false|] "" llvm_builder in
                 ()
           end;
           struct_val
-        | _ -> Llvm.build_unreachable llvm_builder
+        | _ -> print_endline "node type"; Llvm.build_unreachable llvm_builder
       end
   | ME_prim (p_name, args, _) -> (*string * m_expr list * int: name of prim, arg list, length of returned tuple*)
       let l = List.map (compile_expr typ node) args in
@@ -590,9 +570,14 @@ let compile_equation node eq =
     | [] -> llvalue
     | (name, _)::[] ->
         let ptr = List.assoc name named_llvals in
+        let value_typ = Llvm.type_of llvalue in
         let llvalue =
-          if Llvm.classify_type (Llvm.type_of llvalue) = Llvm.TypeKind.Pointer then
-            Llvm.build_load llvalue "" llvm_builder
+          if Llvm.classify_type value_typ = Llvm.TypeKind.Pointer then
+            if Llvm.classify_type (Llvm.element_type value_typ) = Llvm.TypeKind.Struct then
+                let gep = Llvm.build_struct_gep llvalue 0 "" llvm_builder in
+                Llvm.build_load gep "" llvm_builder
+            else
+                Llvm.build_load llvalue "" llvm_builder
           else
             llvalue
         in
@@ -611,7 +596,7 @@ let compile_equation node eq =
   else
     Llvm.build_ret_void llvm_builder
 
-let update_mem _mem_cast mem_p node_name mem_update =
+(* let update_mem _mem_cast mem_p node_name mem_update =
     let mem_alloca = try
         List.assoc "mem" (
             try
@@ -664,8 +649,17 @@ let update_mem _mem_cast mem_p node_name mem_update =
     | _ -> Llvm.build_unreachable llvm_builder
     in
     let _ = Llvm.build_store new_mem_val mem_p llvm_builder in
-    ()
+    () *)
 
+
+(* alloc ptr struct
+    alloc struct
+    save param to pointer
+    save value to struct
+    load pointer
+    bitcast loaded and struct alloc
+    memcpy alloc to loaded ptr
+*)
 let compile_node node =
   let mem_struct = make_mem_struct node in
   Hashtbl.add node_mem_struct node.mn_name mem_struct;
@@ -684,7 +678,6 @@ let compile_node node =
   let func_val = Llvm.define_function func_name func_type llvm_module in
   let dec = if Llvm.is_opaque mem_struct then 0 else 1 in
   let has_mem = ref false in
-  let mem_cast = ref (Llvm.const_int i64_ty 0) in
   Array.iteri (fun idx param ->
     if idx = 0  && not (Llvm.is_opaque mem_struct) then
       (has_mem := true;
@@ -703,23 +696,11 @@ let compile_node node =
   let local_vars = node.mn_local@node.mn_output_step in
   let llvalues = alloc_locals local_vars in
   let llvalues =if !has_mem then
-    let mem_ptr = (Llvm.params func_val).(0) in
-    let mem_val = Llvm.build_load mem_ptr "" llvm_builder in
-    let mem_alloc = Llvm.build_alloca mem_struct "mem" llvm_builder in
-    let _ = match Llvm.classify_type (Llvm.type_of mem_val) with
-      | Llvm.TypeKind.Integer ->
-          (* We want to bitcast the struct and store the ret val*)
-          let cast = Llvm.build_bitcast mem_alloc (Llvm.pointer_type i64_ty) "" llvm_builder in
-          mem_cast := cast;
-          Llvm.build_store mem_val cast llvm_builder
-      | _ ->
-          let arr_ptr = Llvm.build_bitcast mem_val (Llvm.pointer_type i8_ty) "" llvm_builder in
-          let struct_ptr = Llvm.build_bitcast mem_alloc (Llvm.pointer_type i8_ty) "" llvm_builder in
-          let mem_cpy_fun = Option.get (Llvm.lookup_function "llvm.memcpy.p0i8.p0i8.i64" llvm_module) in
-          mem_cast := mem_val;
-          Llvm.build_call mem_cpy_fun [|arr_ptr; struct_ptr; Llvm.size_of mem_struct; llvm_false|] "" llvm_builder
-    in
-    mem_alloc::llvalues
+    let mem_ptr_param = (Llvm.params func_val).(0) in
+    let mem_ptr_alloc = Llvm.build_alloca (Llvm.pointer_type mem_struct) "mem_ptr" llvm_builder in
+    let mem_val_alloc = Llvm.build_alloca mem_struct "mem" llvm_builder in
+    let _ = Llvm.build_store mem_ptr_param mem_ptr_alloc llvm_builder in
+    mem_ptr_alloc::mem_val_alloc::llvalues
   else
       llvalues
   in
@@ -734,7 +715,6 @@ let compile_node node =
   let _ = List.map (compile_equation node) node.mn_compute in
   let _ = Llvm.build_br update_b llvm_builder in
   Llvm.position_at_end update_b llvm_builder;
-  if !has_mem then update_mem (!mem_cast) ((Llvm.params func_val).(0)) node.mn_name node.mn_update;
   let _ = Llvm.build_br ret_b llvm_builder in
   Llvm.position_at_end ret_b llvm_builder;
   let output_names = List.map (fun (n, _) -> n) (List.rev output_list) in
@@ -742,8 +722,6 @@ let compile_node node =
   match ret_list with
   | [] ->
       Llvm.build_ret_void llvm_builder
-  | hd::[] ->
-      Llvm.build_ret hd llvm_builder
   | _ ->
       let ret_struct = Hashtbl.find node_ret_struct func_name in
       let struct_val = Llvm.build_alloca ret_struct "" llvm_builder in
@@ -761,22 +739,10 @@ let compile_node node =
         let arr_ptr = Llvm.build_bitcast arr_val (Llvm.pointer_type i8_ty) "" llvm_builder in
         let struct_ptr = Llvm.build_bitcast struct_val (Llvm.pointer_type i8_ty) "" llvm_builder in
         let mem_cpy_fun = Option.get (Llvm.lookup_function "llvm.memcpy.p0i8.p0i8.i64" llvm_module) in
-        let _ = Llvm.build_call mem_cpy_fun [|arr_ptr; struct_ptr; Llvm.size_of ret_struct; llvm_false|] "" llvm_builder in
+        let _ = Llvm.build_call mem_cpy_fun [|arr_ptr; struct_ptr; get_copy_size ret_struct; llvm_false|] "" llvm_builder in
         Llvm.build_load arr_val "" llvm_builder
       in
       Llvm.build_ret ret_val llvm_builder
-
-let printf_params_t = [|Llvm.pointer_type i8_ty|]
-let printf_typ = Llvm.var_arg_function_type i32_ty printf_params_t
-
-let strtol_params_t = [|Llvm.pointer_type i8_ty; Llvm.pointer_type (Llvm.pointer_type i8_ty); i32_ty|]
-let strtol_typ = Llvm.function_type i64_ty strtol_params_t
-
-let strtof_params_t = [|Llvm.pointer_type i8_ty; Llvm.pointer_type (Llvm.pointer_type i8_ty)|]
-let strtof_typ = Llvm.function_type float_ty strtof_params_t
-
-let mem_cpy_params_t = [|Llvm.pointer_type i8_ty; Llvm.pointer_type i8_ty; i64_ty; i1_ty|]
-let mem_cpy_typ = Llvm.function_type void_ty mem_cpy_params_t
 
 
 let mk_main main steps =
@@ -798,30 +764,20 @@ let mk_main main steps =
   let main_node = Llvm.lookup_function (main_name^"_step") llvm_module in
   let mem_init = if not (Ss.mem main_name (!empty_mem_nodes)) then
       let mem_struct = Hashtbl.find node_mem_struct main_name in
-      let mem_alloca = Llvm.build_alloca mem_struct "" llvm_builder in
+      let mem_ptr_alloca = Llvm.build_alloca (Llvm.pointer_type mem_struct) "" llvm_builder in
+      let mem_ptr_val    = Llvm.build_load mem_ptr_alloca "" llvm_builder in
       let init_f = match Llvm.lookup_function (main_name^"_init") llvm_module with
       | None ->
               failwith (Printf.sprintf "Memory init func not found for %s" main_name)
       | Some v ->
               v
       in
-      let size = get_struct_size mem_struct in
-      let call = Llvm.build_call init_f [||] "" llvm_builder in
-      if size = 1 then
-          let cast = Llvm.build_bitcast mem_alloca (Llvm.pointer_type i64_ty) "" llvm_builder in
-          let _ = Llvm.build_store call cast llvm_builder in
-          Some (cast)
-      else
-          let arr_alloca = Llvm.build_alloca (Llvm.array_type i64_ty size) "" llvm_builder in
-          let arr_cast  = Llvm.build_bitcast arr_alloca (Llvm.pointer_type i8_ty) "" llvm_builder in
-          let _ = Llvm.build_store call arr_alloca llvm_builder in
-          let mem_cast  = Llvm.build_bitcast mem_alloca (Llvm.pointer_type i8_ty) "" llvm_builder in
-          let mem_cpy_fun = Option.get (Llvm.lookup_function "llvm.memcpy.p0i8.p0i8.i64" llvm_module) in
-          let _ = Llvm.build_call mem_cpy_fun [|arr_cast; mem_cast; (Llvm.size_of mem_struct); llvm_false|] "" llvm_builder in
-          Some (arr_alloca)
+      let _ = Llvm.build_call init_f [| mem_ptr_val |] "" llvm_builder in
+      Some(mem_ptr_val)
   else
       None
   in
+
   let main_arg = match mem_init with
   | Some v -> [|v|]
   | None   -> [| |]
@@ -852,6 +808,18 @@ let mk_main main steps =
   Llvm.position_at_end ret_block llvm_builder;
   let _ = Llvm.build_ret zero llvm_builder in
   ()
+
+let printf_params_t = [|Llvm.pointer_type i8_ty|]
+let printf_typ = Llvm.var_arg_function_type i32_ty printf_params_t
+
+let strtol_params_t = [|Llvm.pointer_type i8_ty; Llvm.pointer_type (Llvm.pointer_type i8_ty); i32_ty|]
+let strtol_typ = Llvm.function_type i64_ty strtol_params_t
+
+let strtof_params_t = [|Llvm.pointer_type i8_ty; Llvm.pointer_type (Llvm.pointer_type i8_ty)|]
+let strtof_typ = Llvm.function_type float_ty strtof_params_t
+
+let mem_cpy_params_t = [|Llvm.pointer_type i8_ty; Llvm.pointer_type i8_ty; i64_ty; i1_ty|]
+let mem_cpy_typ = Llvm.function_type void_ty mem_cpy_params_t
 
 let compile nodes main steps =
   let sanityzed_nodes = Sanityze.sanityze nodes in

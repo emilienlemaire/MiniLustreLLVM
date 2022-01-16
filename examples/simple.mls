@@ -1,14 +1,11 @@
-node t (k, l: int) returns (i,j, m: int);
+node t () returns (i: int);
 let
-  i = 1000 + l;
-  j = 1 fby k;
-  m = if false then 42 else 15;
+    i = 1 fby i + 1;
 tel
 
 node n (u: unit) returns (o: unit);
-var f: float; k0, k1, k2: int;
+var i: int;
 let
-  (k0, k1, k2) = t (12, 13);
-  f = float_of_string("1.0");
-  o = print(f," ", k0, " ", k1, "\n");
+  i = t ();
+  o = print("coucou", i);
 tel

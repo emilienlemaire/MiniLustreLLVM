@@ -91,17 +91,17 @@ let () =
     if !sched_only then exit 0;
     let imp_prg = Imp.compile ft in
     let imp_prg = Imp.rename_nodes imp_prg main_node in
-    let llvm = Target_lib.Mls_llvm.compile imp_prg !main_node !steps in
-    if !verbose then begin
-      Format.printf "/**************************************/@.";
-      Format.printf "/* LLVM IR                            */@.";
-      Format.printf "/**************************************/@.";
-      print_string llvm;
-      print_newline ();
-    end;
 
 
     if not !ml_only then begin
+        let llvm = Target_lib.Mls_llvm.compile imp_prg !main_node !steps in
+        if !verbose then begin
+          Format.printf "/**************************************/@.";
+          Format.printf "/* LLVM IR                            */@.";
+          Format.printf "/**************************************/@.";
+          print_string llvm;
+          print_newline ();
+      end;
       let ll = (Filename.chop_suffix file ".mls") ^ ".ll" in
       let cll = open_out ll in
       Printf.fprintf cll "%s" llvm;
@@ -129,6 +129,3 @@ let () =
         report_loc l;
         eprintf "%a\n@." Typing.report e;
         exit 1
-    | e ->
-        eprintf "Anomaly: %s\n@." (Printexc.to_string e);
-        exit 2
