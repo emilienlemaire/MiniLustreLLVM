@@ -102,8 +102,8 @@ let rec string_of_expr e =
   | ME_prim(f,args,_) ->
       sprintf "(%s (%s))" f (string_of_list string_of_expr ", " args)
   | ME_print(el) ->
-      sprintf "(@\n%s    flush_all())"
-        (string_of_list string_of_print_expr "" el)
+          sprintf "(@\n%s    print_newline(); flush_all())"
+        (string_of_list string_of_print_expr "(print_string \" \");" el)
 
 and string_of_print_expr e =
   match e.mexpr_type with
