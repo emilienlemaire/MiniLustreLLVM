@@ -1,6 +1,8 @@
 node t () returns (i: int);
+var u: unit;
 let
-    i = 1 fby i + 1;
+    i = 1 fby 2;
+    u = print(i);
 tel
 
 node n (u: unit) returns (o: unit);
