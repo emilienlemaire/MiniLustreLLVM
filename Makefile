@@ -39,11 +39,11 @@ examples/%.ml: minilustre
 	$(COMPILE.mls) -ml-only $(@:.ml=.mls)
 
 examples/%.s: examples/%.ll
-	$(LLC) $^
+	$(LLC) $<
 
 bin/%.ll.exe: examples/%.s
 	@mkdir -p bin/
-	$(CC) $^ -o $@
+	$(CC) $< -o $@
 
 bin/%.ml.exe: examples/%.ml
 	@mkdir -p bin/
@@ -59,10 +59,6 @@ exec: bin/simple.ml.exe bin/simple.ll.exe
 	@echo "-----[ LLVM  ]-----"
 	@echo "-------------------\n"
 	@./bin/simple.ll.exe
-
-# .PHONY: tests
-# tests: minilustre
-# 	$(foreach filename, $(TESTS), make bin/$(filename:.mls=.ll.exe) ;)
 
 .PHONY: clean
 clean:
