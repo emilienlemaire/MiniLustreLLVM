@@ -1,25 +1,57 @@
-all:
-	dune build
+BUILD  = dune build
+CC     = clang
+LLC    = llc
+CLEAN  = dune clean
 
-install:
-	dune build
-	mv ./_build/default/src/minilustre.exe ./bin/minilustre
+OCAMLFIND = ocamlfind
+OCAMLC    = ocamlopt
+OCAMLOPTS = -linkpkg -package graphics
+
+MLSC  = ./_build/default/src/minilustre.exe
+OPTS  = -main n -steps 3
+
+OBJ   = $(wildcard examples/*.o)
+LL    = $(wildcard examples/*.ll)
+ASM   = $(wildcard examples/*.s)
+CMI   = $(wildcard examples/*.cmi)
+CMX   = $(wildcard examples/*.cmx)
+BIN   = $(wildcard bin/*)
+
+BAZAR = $(OBJ) $(LL) $(ASM) $(CMI) $(CMX) $(EXEC)
+
+all: minilustre_exec
+
+minilustre_exec:
+	$(BUILD)
+
+examples/%.ll: minilustre_exec
+	$(MLSC) $(OPTS) -ll-only $(@:.ll=.mls)
+
+examples/%.ml: minilustre_exec
+	$(MLSC) $(OPTS) -ml-only $(@:.ml=.mls)
+
+examples/%.s: examples/%.ll
+	$(LLC) $^
+
+bin/%.ll.exe: examples/%.s
+	$(CC) $^ -o $@
+
+bin/%.ml.exe: examples/%.ml
+	$(OCAMLFIND) $(OCAMLC) $(OCAMLOPTS) $< -o $@
+
+exec: bin/simple.ml.exe bin/simple.ll.exe
+	@echo "\n-------------------"
+	@echo "-----[ OCaml ]-----"
+	@echo "-------------------\n"
+	@./bin/simple.ml.exe
+	@echo "\n-------------------"
+	@echo "-----[ LLVM  ]-----"
+	@echo "-------------------\n"
+	@./bin/simple.ll.exe
 
 clean:
-	rm -rf ./bin/* ./examples/*.o ./examples/*.ll ./examples/*.s ./examples/*.cm* ./examples/*exe
-	dune clean
+	$(CLEAN)
+	rm -rf $(BAZAR)
 
-simple:
-	./_build/default/src/minilustre.exe -main n -steps 3 examples/simple.mls
-	ocamlfind ocamlopt -linkpkg -package graphics examples/simple.ml -o bin/simple.ml.exe
-	llc examples/simple.ll
-	clang examples/simple.s -o bin/simple.ll.exe
-
-exec:
-	@echo "-[ OCaml ]-"
-	@echo ""
-	@./bin/simple.ml.exe
-	@echo ""
-	@echo "-[ LLVM ]-"
-	@echo ""
-	@./bin/simple.ll.exe
+cleanall: clean
+	rm -rf $(BIN)

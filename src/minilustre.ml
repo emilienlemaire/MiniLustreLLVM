@@ -23,12 +23,16 @@ let main_node = ref ""
 let steps = ref ~-1
 let verbose = ref false
 let graphics = ref false
+let ml_only = ref false
+let ll_only = ref false
 
 let spec =
   ["-parse-only", Arg.Set parse_only,       "  stops after parsing";
    "-type-only",  Arg.Set type_only,        "  stops after typing";
    "-norm-only",  Arg.Set norm_only,        "  stops after normalization";
    "-sched-only", Arg.Set sched_only,       "  stops after scheduling";
+   "-ml-only",    Arg.Set ml_only,          "  compile only to ocaml";
+   "-ll-only",    Arg.Set ll_only,          "  compile only to llvm";
    "-main",       Arg.Set_string main_node, "<name>  main node";
    "-steps",      Arg.Set_int steps,        "<int>  steps of test";
    "-verbose",    Arg.Set verbose,          "print intermediate transformations";
@@ -95,14 +99,22 @@ let () =
       print_string llvm;
       print_newline ();
     end;
-    let ll = (Filename.chop_suffix file ".mls") ^ ".ll" in
-    let ml = (Filename.chop_suffix file ".mls") ^ ".ml" in
-    let cml = open_out ml in
-    let cll = open_out ll in
-    Ocaml_printer.output_ocaml cml imp_prg !main_node !steps !graphics;
-    close_out cml;
-    Printf.fprintf cll "%s" llvm;
-    close_out cll;
+
+
+    if not !ml_only then begin
+      let ll = (Filename.chop_suffix file ".mls") ^ ".ll" in
+      let cll = open_out ll in
+      Printf.fprintf cll "%s" llvm;
+      close_out cll;
+    end;
+
+    if not !ll_only then begin
+        let ml = (Filename.chop_suffix file ".mls") ^ ".ml" in
+        let cml = open_out ml in
+        Ocaml_printer.output_ocaml cml imp_prg !main_node !steps !graphics;
+        close_out cml;
+    end;
+
     exit 0
   with
     | Lexical_error s ->
