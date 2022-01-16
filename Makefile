@@ -55,10 +55,11 @@ exec: bin/simple.ml.exe bin/simple.ll.exe
 	@echo "-----[ OCaml ]-----"
 	@echo "-------------------\n"
 	@./bin/simple.ml.exe
-	@echo "\n-------------------"
+	@echo "\n\n-------------------"
 	@echo "-----[ LLVM  ]-----"
 	@echo "-------------------\n"
 	@./bin/simple.ll.exe
+	@echo ""
 
 .PHONY: clean
 clean:

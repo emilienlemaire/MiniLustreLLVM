@@ -8,17 +8,16 @@ vers le langage intermédiaire LLVM.
 
 ## Usage
 
-- Compilation
-    ```bash
-    $ make bin/filename.ll.exe
-    $ make bin/filename.ml.exe
-    ```
+Il faut commencer par installer LLVM sur votre machine.
+Nous avons écrit un script qui devrait le faire pour vous : `./install.sh`.
 
-- Execution
-    ```bash
-    $ ./bin/filename.ll.exe
-    $ ./bin/filename.ml.exe
-    ```
+Ensuite, pour utiliser ce que nous avons fait vous pouvez faire par exemple
+`make bin/filename.ll.exe` pour compiler le fichier `example/filename.mls` en executable (par llvm).
+
+Il est aussi toujours possible de compiler un fichier par OCaml, en changeant la "sous-extension"
+`ll` en `ml`, càd :  `make bin/filename.ml.exe`.
+
+Sinon, lancer la commande `make example/filename.ll` pour simplement compiler un fichier `mls` en `ll`.
 
 ## Explication générale
 
