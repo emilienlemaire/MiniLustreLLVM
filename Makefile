@@ -1,22 +1,26 @@
-BUILD  = dune build
-CC     = clang
-LLC    = llc
-CLEAN  = dune clean
+# commands
+BUILD      = dune build
+CC         = clang
+LLC        = llc
+CLEAN      = dune clean
+RM         = rm -rf
+OCAMLFIND  = ocamlfind
+OCAMLC     = ocamlopt
+OCAMLFLAGS = -linkpkg -package graphics
+MLSC       = ./_build/default/src/minilustre.exe
+MLSCFLAGS  = -main n -steps 3
 
-OCAMLFIND = ocamlfind
-OCAMLC    = ocamlopt
-OCAMLOPTS = -linkpkg -package graphics
+# compilers
+COMPILE.ocaml = $(OCAMLFIND) $(OCAMLC) $(OCAMLFLAGS)
+COMPILE.mls   = $(MLSC) $(MLSCFLAGS)
 
-MLSC  = ./_build/default/src/minilustre.exe
-OPTS  = -main n -steps 3
-
+# files
 OBJ   = $(wildcard examples/*.o)
 LL    = $(wildcard examples/*.ll)
 ASM   = $(wildcard examples/*.s)
 CMI   = $(wildcard examples/*.cmi)
 CMX   = $(wildcard examples/*.cmx)
 BIN   = $(wildcard bin/*)
-
 BAZAR = $(OBJ) $(LL) $(ASM) $(CMI) $(CMX) $(EXEC)
 
 all: minilustre_exec
@@ -25,10 +29,10 @@ minilustre_exec:
 	$(BUILD)
 
 examples/%.ll: minilustre_exec
-	$(MLSC) $(OPTS) -ll-only $(@:.ll=.mls)
+	$(COMPILE.mls) -ll-only $(@:.ll=.mls)
 
 examples/%.ml: minilustre_exec
-	$(MLSC) $(OPTS) -ml-only $(@:.ml=.mls)
+	$(COMPILE.mls) -ml-only $(@:.ml=.mls)
 
 examples/%.s: examples/%.ll
 	$(LLC) $^
@@ -37,7 +41,7 @@ bin/%.ll.exe: examples/%.s
 	$(CC) $^ -o $@
 
 bin/%.ml.exe: examples/%.ml
-	$(OCAMLFIND) $(OCAMLC) $(OCAMLOPTS) $< -o $@
+	$(COMPILE.ocaml) $< -o $@
 
 exec: bin/simple.ml.exe bin/simple.ll.exe
 	@echo "\n-------------------"
@@ -51,7 +55,7 @@ exec: bin/simple.ml.exe bin/simple.ll.exe
 
 clean:
 	$(CLEAN)
-	rm -rf $(BAZAR)
+	$(RM) $(BAZAR)
 
 cleanall: clean
-	rm -rf $(BIN)
+	$(RM) $(BIN)
