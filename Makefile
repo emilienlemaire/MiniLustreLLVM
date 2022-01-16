@@ -20,29 +20,36 @@ LL    = $(wildcard examples/*.ll)
 ASM   = $(wildcard examples/*.s)
 CMI   = $(wildcard examples/*.cmi)
 CMX   = $(wildcard examples/*.cmx)
-BIN   = $(wildcard bin/*)
+BIN   = $(wildcard bin)
 BAZAR = $(OBJ) $(LL) $(ASM) $(CMI) $(CMX) $(EXEC)
+TESTS = $(wildcard examples/*.mls)
+PROG  = src/minilustre.ml
 
-all: minilustre_exec
+.PHONY: all
+all: minilustre
 
-minilustre_exec:
-	$(BUILD)
+.PHONY: minilustre
+minilustre:
+	$(BUILD) $(PROG:.ml=.exe)
 
-examples/%.ll: minilustre_exec
+examples/%.ll: minilustre
 	$(COMPILE.mls) -ll-only $(@:.ll=.mls)
 
-examples/%.ml: minilustre_exec
+examples/%.ml: minilustre
 	$(COMPILE.mls) -ml-only $(@:.ml=.mls)
 
 examples/%.s: examples/%.ll
 	$(LLC) $^
 
 bin/%.ll.exe: examples/%.s
+	@mkdir -p bin/
 	$(CC) $^ -o $@
 
 bin/%.ml.exe: examples/%.ml
+	@mkdir -p bin/
 	$(COMPILE.ocaml) $< -o $@
 
+.PHONY: exec
 exec: bin/simple.ml.exe bin/simple.ll.exe
 	@echo "\n-------------------"
 	@echo "-----[ OCaml ]-----"
@@ -53,9 +60,15 @@ exec: bin/simple.ml.exe bin/simple.ll.exe
 	@echo "-------------------\n"
 	@./bin/simple.ll.exe
 
+# .PHONY: tests
+# tests: minilustre
+# 	$(foreach filename, $(TESTS), make bin/$(filename:.mls=.ll.exe) ;)
+
+.PHONY: clean
 clean:
 	$(CLEAN)
 	$(RM) $(BAZAR)
 
+.PHONY: cleanall
 cleanall: clean
 	$(RM) $(BIN)
