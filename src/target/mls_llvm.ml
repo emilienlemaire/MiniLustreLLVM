@@ -10,6 +10,8 @@ let llvm_context = Llvm.global_context ()
 let llvm_module = Llvm.create_module llvm_context "test"
 let llvm_builder = Llvm.builder llvm_context
 
+let _ = Llvm.set_target_triple (Llvm_target.Target.default_triple ()) llvm_module
+
 let node_ret_struct = Hashtbl.create 64
 let node_mem_struct = Hashtbl.create 64
 let mem_struct_attr_offset = Hashtbl.create 64
@@ -515,6 +517,8 @@ let rec compile_expr typ ({mn_name = name;_ } as node) ({mexpr_desc = expr; _} a
               | Llvm.TypeKind.Float ->
                   let load = Llvm.build_load llval "" llvm_builder in
                   Llvm.build_fpext load double_ty "" llvm_builder
+              | Llvm.TypeKind.Integer ->
+                  Llvm.build_load llval "" llvm_builder
               | _ ->
                   Llvm.build_load llval "" llvm_builder
               end
@@ -773,7 +777,7 @@ let mk_main main steps =
               v
       in
       let _ = Llvm.build_call init_f [| mem_ptr_val |] "" llvm_builder in
-      Some(mem_ptr_val)
+      Some(Llvm.build_load mem_ptr_alloca "" llvm_builder)
   else
       None
   in
