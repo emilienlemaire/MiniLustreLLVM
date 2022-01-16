@@ -1,44 +1,55 @@
-BUILD  = dune build
-CC     = clang
-LLC    = llc
-CLEAN  = dune clean
+# commands
+BUILD      = dune build
+CC         = clang
+LLC        = llc
+CLEAN      = dune clean
+RM         = rm -rf
+OCAMLFIND  = ocamlfind
+OCAMLC     = ocamlopt
+OCAMLFLAGS = -linkpkg -package graphics
+MLSC       = ./_build/default/src/minilustre.exe
+MLSCFLAGS  = -main n -steps 3
 
-OCAMLFIND = ocamlfind
-OCAMLC    = ocamlopt
-OCAMLOPTS = -linkpkg -package graphics
+# compilers
+COMPILE.ocaml = $(OCAMLFIND) $(OCAMLC) $(OCAMLFLAGS)
+COMPILE.mls   = $(MLSC) $(MLSCFLAGS)
 
-MLSC  = ./_build/default/src/minilustre.exe
-OPTS  = -main n -steps 3
-
+# files
 OBJ   = $(wildcard examples/*.o)
 LL    = $(wildcard examples/*.ll)
 ASM   = $(wildcard examples/*.s)
 CMI   = $(wildcard examples/*.cmi)
 CMX   = $(wildcard examples/*.cmx)
-BIN   = $(wildcard bin/*)
-
+BIN   = $(wildcard bin)
 BAZAR = $(OBJ) $(LL) $(ASM) $(CMI) $(CMX) $(EXEC)
+TESTS = $(wildcard examples/*.mls)
+PROG  = src/minilustre.ml
 
-all: minilustre_exec
+.PHONY: all
+all: minilustre
 
-minilustre_exec:
-	$(BUILD)
+.PHONY: minilustre
+minilustre:
+	$(BUILD) $(PROG:.ml=.exe)
 
-examples/%.ll: minilustre_exec
-	$(MLSC) $(OPTS) -ll-only $(@:.ll=.mls)
+examples/%.ll: minilustre
+	$(COMPILE.mls) -ll-only $(@:.ll=.mls)
 
-examples/%.ml: minilustre_exec
-	$(MLSC) $(OPTS) -ml-only $(@:.ml=.mls)
+examples/%.ml: minilustre
+	$(COMPILE.mls) -ml-only $(@:.ml=.mls)
 
 examples/%.s: examples/%.ll
 	$(LLC) $^
 
 bin/%.ll.exe: examples/%.s
+	@mkdir -p bin/
 	$(CC) $^ -o $@
 
 bin/%.ml.exe: examples/%.ml
-	$(OCAMLFIND) $(OCAMLC) $(OCAMLOPTS) $< -o $@
+	@mkdir -p bin/
+	$(COMPILE.ocaml) $< -o $@
 
+.PHONY: exec
 exec: bin/simple.ml.exe bin/simple.ll.exe
 	@echo "\n-------------------"
 	@echo "-----[ OCaml ]-----"
@@ -49,9 +60,15 @@ exec: bin/simple.ml.exe bin/simple.ll.exe
 	@echo "-------------------\n"
 	@./bin/simple.ll.exe
 
+# .PHONY: tests
+# tests: minilustre
+# 	$(foreach filename, $(TESTS), make bin/$(filename:.mls=.ll.exe) ;)
+
+.PHONY: clean
 clean:
 	$(CLEAN)
-	rm -rf $(BAZAR)
+	$(RM) $(BAZAR)
 
+.PHONY: cleanall
 cleanall: clean
-	rm -rf $(BIN)
+	$(RM) $(BIN)
