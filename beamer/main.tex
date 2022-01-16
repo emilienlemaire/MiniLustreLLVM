@@ -39,7 +39,7 @@
 
 
 %------------------------------------------------------
-\title[Luste $\mapsto$ LLVM]{Compilation de Mini-Lustre vers LLVM}
+\title[Mini-Lustre $\mapsto$ LLVM]{Compilation de Mini-Lustre vers LLVM}
 \institute[UPSaclay]{Université Paris-Saclay}
 \author{Lemaire \& Patault}
 \date{\today}
@@ -71,18 +71,11 @@
 \begin{frame}[fragile]{Présentation Générale}
             \vfill
     \begin{itemize}
-        \item
-            Utilisation de l'interface C++ de LLVM par les bingings OCaml\\\vspace*{0.2cm}
-            $\qquad\angArr$ \ocaml{Llvm.declare_function "main"} ...
+        \item LLVM := Low Level Virtual Machine
 
-        \vspace*{1cm}\item
-            Génération du code LLVM IR (fichiers .ll)
-  \begin{minted}[baselinestretch=1.2,fontsize=\footnotesize]{llvm}
-  declare i32 @main() #0 {
-    entry:
-        ...
-  }
-   \end{minted}
+        \vfill\item LLMV IR := langage intermédiare que l'on utilise
+
+        \vfill\item Interface C++ et bindings OCaml
     \end{itemize}
             \vfill
 \end{frame}
@@ -114,13 +107,48 @@
 \subsection{Utilisation LLVM}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\begin{frame}
-    \begin{figure}
-        \centering
-        \includegraphics[width=0.6\textwidth]{imgs/compilation.png}
-    \end{figure}
+\begin{frame}{Schéma de compilation simplifié}
+    \begin{overprint}
+    \onslide<1>
+        \begin{figure}
+            \centering
+            \includegraphics[width=0.8\textwidth]{imgs/compilation0.png}
+        \end{figure}
+    \onslide<2->
+        \begin{figure}
+            \centering
+            \includegraphics[width=0.82\textwidth]{imgs/compilation1.png}
+        \end{figure}
+    \end{overprint}
+
 \end{frame}
 
+
+\begin{frame}[fragile]{En pratique}
+    \vfill
+    \begin{itemize}
+        \vfill\item Interface C++ et bindings OCaml
+        \begin{minted}[baselinestretch=1.2,fontsize=\footnotesize]{ocaml}
+    let main = Llvm.declare_function "main" i32 in
+    let o = Llvm.build_alloca llvm_typ "o" llvm_builder in
+    let one = Llvm.const_int i32_ty 1 in
+    let store = Llvm.build_store o one llvm_builder in
+    ...
+        \end{minted}
+
+        \vfill\item
+        Génération du code LLVM IR (fichiers .ll)
+        \begin{minted}[baselinestretch=1.2,fontsize=\footnotesize]{llvm}
+    declare i32 @main() #0 {
+      entry:
+        %o = alloca i32, align 4
+        store i32 1, i32* %o, align 4
+        ...
+    }
+        \end{minted}
+    \end{itemize}
+\vfill
+\end{frame}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Travail Réalisé}
@@ -131,21 +159,18 @@
 \end{frame}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Montrer un peu le code}
+\subsection{Dans le dur}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{frame}[fragile]{Exemple de transformation}
     \begin{columns}
     \begin{column}{0.25\textwidth}
   \begin{minted}[baselinestretch=1.2,fontsize=\footnotesize]{ocaml}
-    let a = 2 in
-    let a = 2 in
-    let a = 2 in
-    let a = 2 in
-    let a = 2 in
-    let a = 2 in
-    let a = 2 in
-    let a = 2 in
+node f(x:int)
+returns (o:int);
+let
+ o = 1;
+tel
    \end{minted}
     \end{column}
     \begin{column}{0.05\textwidth}
@@ -153,13 +178,18 @@
     \end{column}
     \begin{column}{0.70\textwidth}  %%<--- here
   \begin{minted}[baselinestretch=1.2,fontsize=\footnotesize]{llvm}
-store float %11, float* %aux4, align 4
-%12 = load float, float* %aux4, align 4
-store float %12, float* %f, align 4
-%13 = alloca %tuple_t_0, align 8
-%14 = getelementptr inbounds %tuple_t_0, %tuple_t_0* %13, i32 0, i32 0
-%15 = load i32, i32* %aux1, align 4
-store i32 %15, i32* %14, align 4
+define i64 @f_1_step(i32 x) {
+  %o = alloca i32, align 4
+  store i32 1, i32* %o, align 4
+  %0 = alloca %ret_f_1_step, align 8
+  %1 = getelementptr inbounds ret_f_1_step,
+            %ret_f_1_step* %0, i32 0, i32 0
+  %2 = load i32, i32* %o, align 4
+  store i32 %2, i32* %1, align 4
+  %3 = bitcast %ret_f_1_step* %0 to i64*
+  %4 = load i64, i64* %3, align 4
+  ret i64 %4
+}
    \end{minted}
     \end{column}
     \end{columns}
@@ -169,13 +199,14 @@ store i32 %15, i32* %14, align 4
 \subsection{Benchmarks}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+
 \begin{frame}{Performances}
     \begin{table}[h]
         \begin{center}
             \begin{tabular}{|r|c|c|c|}\hline
-                                & file1.mls & file2.mls & file3.mls \\ \hline\hline
-                          OCaml & 11s       & 9s        & 19s       \\ \hline
-                          LLVM  & 9s        & 8s        & 1s        \\ \hline
+                                & simple.mls ($10^7$) & simple.mls ($10^8$) & todo.mls \\ \hline\hline
+                          LLVM  & 13.84s             & 140.70s            & todo     \\ \hline
+                          OCaml & 16.29s             & 185.49s            & todo     \\ \hline
                           % Lustre compiler & 11s       & 9s        & 19s       \\ \hline
             \end{tabular}
             \caption{Table des performances comparées en fonction du langage cible}
@@ -183,27 +214,27 @@ store i32 %15, i32* %14, align 4
     \end{table}
 \end{frame}
 
-\begin{frame}{Performances}
-    \begin{tikzpicture}
-        \begin{axis}
-            [
-            ybar, % ybar command displays the graph in horizontal form, while the xbar command displays the graph in vertical form.
-            enlargelimits=0.15,% these limits are used to shrink or expand the graph. The lesser the limit, the higher the graph will expand or grow. The greater the limit, the more graph will shrink.
-            legend style={at={(0.4,-0.25)}, % these are the measures of the bottom row containing surplus (wheat, Tea, rice), where -0.25 is the gap between the bottom row and the graph.
-            anchor=north,legend columns=-1},
-            % here, north is the position of the bottom legend row. You can specify the east, west, or south direction to shift the location.
-            symbolic x coords={Ex1, Ex2, Ex3},
-            xtick=data,
-            nodes near coords,
-            nodes near coords align={vertical},
-            ]
-            \addplot coordinates {(Ex1, 75) (Ex2, 78) (Ex3, 80)}; % these are the measures of a particular bar graph. The tick marks of the y-axis will be adjusted automatically according to the data values entered in the coordinates.
-            \addplot coordinates {(Ex1, 70) (Ex2, 63) (Ex3, 68)};
-            \legend{LLVM, OCaml}
+% \begin{frame}{Performances}
+%     \begin{tikzpicture}
+%         \begin{axis}
+%             [
+%             ybar, % ybar command displays the graph in horizontal form, while the xbar command displays the graph in vertical form.
+%             enlargelimits=0.15,% these limits are used to shrink or expand the graph. The lesser the limit, the higher the graph will expand or grow. The greater the limit, the more graph will shrink.
+%             legend style={at={(0.4,-0.25)}, % these are the measures of the bottom row containing surplus (wheat, Tea, rice), where -0.25 is the gap between the bottom row and the graph.
+%             anchor=north,legend columns=-1},
+%             % here, north is the position of the bottom legend row. You can specify the east, west, or south direction to shift the location.
+%             symbolic x coords={Ex1, Ex2, Ex3},
+%             xtick=data,
+%             nodes near coords,
+%             nodes near coords align={vertical},
+%             ]
+%             \addplot coordinates {(Ex1, 75) (Ex2, 78) (Ex3, 80)}; % these are the measures of a particular bar graph. The tick marks of the y-axis will be adjusted automatically according to the data values entered in the coordinates.
+%             \addplot coordinates {(Ex1, 70) (Ex2, 63) (Ex3, 68)};
+%             \legend{LLVM, OCaml}
 
-        \end{axis}
-    \end{tikzpicture}
-\end{frame}
+%         \end{axis}
+%     \end{tikzpicture}
+% \end{frame}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Démonstration}

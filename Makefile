@@ -1,18 +1,22 @@
 # commands
 BUILD      = dune build
 CC         = clang
+CFLAGS     = -O3
 LLC        = llc
+LLCFLAGS   = -O3
 CLEAN      = dune clean
 RM         = rm -rf
 OCAMLFIND  = ocamlfind
 OCAMLC     = ocamlopt
-OCAMLFLAGS = -linkpkg -package graphics
+OCAMLFLAGS = -O3 -linkpkg -package graphics
 MLSC       = ./_build/default/src/minilustre.exe
-MLSCFLAGS  = -main n -steps 3
+MLSCFLAGS  = -main n -steps 100000000
 
 # compilers
 COMPILE.ocaml = $(OCAMLFIND) $(OCAMLC) $(OCAMLFLAGS)
 COMPILE.mls   = $(MLSC) $(MLSCFLAGS)
+COMPILE.ll    = $(LLC) $(LLCFLAGS)
+COMPILE.c     = $(CC) $(CFLAGS)
 
 # files
 OBJ   = $(wildcard examples/*.o)
@@ -39,11 +43,11 @@ examples/%.ml: minilustre
 	$(COMPILE.mls) -ml-only $(@:.ml=.mls)
 
 examples/%.s: examples/%.ll
-	$(LLC) $<
+	$(COMPILE.ll) $<
 
 bin/%.ll.exe: examples/%.s
 	@mkdir -p bin/
-	$(CC) $< -o $@
+	$(COMPILE.c) $< -o $@
 
 bin/%.ml.exe: examples/%.ml
 	@mkdir -p bin/
