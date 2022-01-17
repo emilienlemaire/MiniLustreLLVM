@@ -20,13 +20,13 @@ node loop ()
 returns (u: bool; temp: float);
 var bas, consigne, haut, c, alpha, beta : float;
 let
-  bas = 1.0;
-  haut = 1.0;
+  bas = 19.0;
+  haut = 22.0;
   c = 50.0;
   alpha = 0.1;
   beta = 0.1;
-  consigne = 20.0;
-  temp = 0.0 fby chaudiere(c, alpha, beta, 0.0, u);
+  consigne = 0.0;
+  temp = 10.0 fby chaudiere(c, alpha, beta, 0.0, u);
   u = relai(consigne -. bas, consigne +. haut, temp);
 tel;
 

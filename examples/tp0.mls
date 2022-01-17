@@ -51,5 +51,5 @@ var l1, l2 : bool; t : int;
 let
   t = 1;
   (l1, l2) = fun(t);
-  o = print(t);
+  o = print(l1, l2);
 tel
