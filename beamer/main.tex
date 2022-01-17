@@ -11,7 +11,7 @@
 \usepackage{xcolor} % to access the named colour LightGray
 \definecolor{LightGray}{gray}{0.9}
 
-\usepackage{minted}
+
 \usepackage{pgfplots} % package used to implement the plot
 
 %%%START THEME SETTINGS
@@ -39,6 +39,47 @@
 \setbeamercovered{transparent}
 %%%END THEME SETTINGS
 
+\usepackage{minted}
+\usepackage{listings}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{mgreen}{RGB}{40,150,40}
+\definecolor{myellow}{RGB}{255,170,40}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{LightGray},
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{mred},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{mgreen},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2,
+}
+
+\lstset{style=mystyle}
+
+\lstdefinelanguage{lustre} {
+    morekeywords={node, let, tel, returns, var},
+    sensitive=false,
+    morecomment=[l]{//},
+    morecomment=[s]{/*}{*/},
+    morestring=[b]",
+    emph={int, unit, float},
+    emphstyle=\color{orange},
+    classoffset=1,
+    keywords={print, fby},
+    keywordstyle=\color{blue},
+    classoffset=0,
+}
 
 %------------------------------------------------------
 \title[Mini-Lustre $\mapsto$ LLVM]{Compilation de Mini-Lustre vers LLVM}
@@ -170,19 +211,19 @@
 
 \begin{frame}[fragile]{Exemple de transformation}
     \begin{columns}
-    \begin{column}{0.25\textwidth}
-    \begin{minted}[baselinestretch=1.2,bgcolor=LightGray,fontsize=\footnotesize]{python}
-node f(x:int)
-returns (o:int);
-let
- o = 1;
-tel
-   \end{minted}
+    \begin{column}{0.30\textwidth}
+        \begin{lstlisting}[language=lustre]
+ node f(x:int)
+ returns (o:int);
+ let
+     o = 1;
+ tel \end{lstlisting}
+
     \end{column}
     \begin{column}{0.05\textwidth}
         $\mapsto$
     \end{column}
-    \begin{column}{0.70\textwidth}  %%<--- here
+    \begin{column}{0.65\textwidth}  %%<--- here
     \begin{minted}[baselinestretch=1.2,bgcolor=LightGray,fontsize=\footnotesize]{llvm}
 define i64 @f_1_step(i32 x) {
   %o = alloca i32, align 4
@@ -207,7 +248,7 @@ define i64 @f_1_step(i32 x) {
 
 \begin{frame}[fragile]{Lustre}
     \begin{figure}
-        \begin{minted}[baselinestretch=1.2,bgcolor=LightGray,fontsize=\footnotesize]{python}
+        \begin{lstlisting}[language=lustre]
     node t() returns (i: int);
     let
       i = 1 fby i + 1;
@@ -219,7 +260,7 @@ define i64 @f_1_step(i32 x) {
       i = t ();
       o = print("coucou", i);
     tel
-        \end{minted}
+        \end{lstlisting}
         \caption{Fichier simple.mls}
     \end{figure}
 
