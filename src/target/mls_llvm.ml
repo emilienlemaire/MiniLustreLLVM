@@ -344,9 +344,14 @@ let rec compile_expr typ ({mn_name = name;_ } as node) ({mexpr_desc = expr; _} a
         match idx with
         | None ->
             List.fold_left (fun acc elt ->
-              let c = compile_expr typ node elt in
-              if Llvm.is_undef c then acc
-              else c::acc
+              let arg_val = compile_expr typ node elt in
+              let arg_val = if Llvm.classify_type (Llvm.type_of arg_val) = Llvm.TypeKind.Pointer then
+                Llvm.build_load arg_val "" llvm_builder
+              else
+                arg_val
+              in
+              if Llvm.is_undef arg_val then acc
+              else arg_val::acc
             ) [] (List.rev args)
         | Some idx ->
             let mem_obj_ptr = List.assoc "mem" named_llvalues in
