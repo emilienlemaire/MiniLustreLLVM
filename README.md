@@ -32,13 +32,13 @@ un fichier `.ll` à partir de cet AST.
 
 Pour pouvoir compiler le projet, il faut absolument avoir les librairies *llvm* disponible pour
 OCaml. Vous pouvez les obtenir de la manièr suivante:
-```
-opam install llvm #Peut ne pas marcher
+```bash
+$ opam install llvm    # peut ne pas marcher
 ```
 
 ou dans la racine de ce projet:
-```
-./install.sh
+```bash
+$ ./install.sh
 ```
 
 Ce script compilera toutes les librairies llvm, et peut prendre beaucoup de temps.
@@ -48,6 +48,6 @@ Ce script compilera toutes les librairies llvm, et peut prendre beaucoup de temp
 ```bash
 $ git clone https://github.com/emilienlemaire/MiniLustreLLVM
 $ cd MiniLustreLLVM
-$ ./install.sh #Si vous devez installer llvm
+$ ./install.sh    #Si vous devez installer llvm
 $ make
 ```
