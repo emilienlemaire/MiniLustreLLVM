@@ -107,6 +107,7 @@ let make_return_type ret_t name =
       let struct_type = Llvm.named_struct_type llvm_context ("ret_" ^ name) in
       Llvm.struct_set_body struct_type (Array.of_list (List.map get_llvm_type ret_t)) false;
       Hashtbl.add node_ret_struct name struct_type;
+      Hashtbl.add mem_struct_attr_offset ("ret_"^name) (List.mapi (fun idx (name, _) -> (name, idx)) ret_t);
       let size = get_struct_size struct_type in
       if size > 1 then
         Llvm.array_type i64_ty size
@@ -237,17 +238,15 @@ let init_node mem_struct node =
   Llvm.build_ret_void llvm_builder
 
 let make_eq_type eq =
-  let typ = if List.length eq.meq_patt = 1 then
-    get_llvm_type (List.hd eq.meq_patt)
+  if List.length eq.meq_patt = 1 then
+    ("", get_llvm_type (List.hd eq.meq_patt))
   else
     let types = List.map get_llvm_type eq.meq_patt in
-    let struct_typ = Llvm.named_struct_type llvm_context (
-        Printf.sprintf "eq_type_%d" (get_next_eq_num ())
-    ) in
+    let name = Printf.sprintf "eq_type_%d" (get_next_eq_num ()) in
+    let struct_typ = Llvm.named_struct_type llvm_context name in
     Llvm.struct_set_body struct_typ (Array.of_list types) false;
-    struct_typ
-  in
-  typ
+    Hashtbl.add mem_struct_attr_offset name (List.mapi (fun idx (name, _) -> (name, idx)) eq.meq_patt);
+    (name, struct_typ)
 
 let rec compile_expr typ ({mn_name = name;_ } as node) ({mexpr_desc = expr; _} as _e) =
   let named_llvalues = Hashtbl.find node_vars_llvalue name in
@@ -350,14 +349,22 @@ let rec compile_expr typ ({mn_name = name;_ } as node) ({mexpr_desc = expr; _} a
               else
                 arg_val
               in
-              if Llvm.is_undef arg_val then acc
-              else arg_val::acc
+              if Llvm.is_undef arg_val then
+                acc
+              else
+                arg_val::acc
             ) [] (List.rev args)
         | Some idx ->
             let mem_obj_ptr = List.assoc "mem" named_llvalues in
             let mem_obj = Llvm.build_load mem_obj_ptr "" llvm_builder in
             let gep = Llvm.build_struct_gep mem_obj idx "" llvm_builder in
-            let args_val = List.map (compile_expr typ node) args in
+            let args_val = List.map ( fun elt ->
+              let arg_val = compile_expr typ node elt in
+              if Llvm.classify_type (Llvm.type_of arg_val) = Llvm.TypeKind.Pointer then
+                Llvm.build_load arg_val "" llvm_builder
+              else
+                arg_val
+            ) (List.rev args) in
             gep::args_val
       in
       let args_arr = Array.of_list args_val in
@@ -494,8 +501,9 @@ let rec compile_expr typ ({mn_name = name;_ } as node) ({mexpr_desc = expr; _} a
         else_val
       in
       let _ = Llvm.build_br phi_b llvm_builder in
+      let last = Llvm.insertion_block llvm_builder in
       Llvm.position_at_end phi_b llvm_builder;
-      Llvm.build_phi [(then_val, then_b); (else_val, else_b)] "" llvm_builder
+      Llvm.build_phi [(then_val, then_b); (else_val, last)] "" llvm_builder
   | ME_print el ->
       let print_str = List.fold_left (fun acc {mexpr_type = typ; _} ->
         let space = if acc = "" then "" else " " in
@@ -545,7 +553,7 @@ let rec compile_expr typ ({mn_name = name;_ } as node) ({mexpr_desc = expr; _} a
       let args = Array.of_list geps in
       Llvm.build_call func args "" llvm_builder
   | ME_tuple el ->
-      let llvals = List.rev (clean_compile typ node el) in
+      let llvals = clean_compile typ node el in
       let named_llvals = Hashtbl.find node_vars_llvalue node.mn_name in
       let lltyps = List.map (fun elt ->
         let name = Llvm.value_name elt in
@@ -554,7 +562,7 @@ let rec compile_expr typ ({mn_name = name;_ } as node) ({mexpr_desc = expr; _} a
             Llvm.type_of elt
         | Some _ ->
             Llvm.element_type (Llvm.type_of elt)
-      ) llvals in
+      ) (llvals) in
       let tuple_typ = Llvm.named_struct_type llvm_context (get_next_tuple ()) in
       Llvm.struct_set_body tuple_typ (Array.of_list lltyps) false;
       let tuple_struct = Llvm.build_alloca tuple_typ "" llvm_builder in
@@ -583,7 +591,7 @@ and clean_compile typ node =
   ) []
 
 let compile_equation node eq =
-  let typ = make_eq_type eq in
+  let (typ_name, typ) = make_eq_type eq in
   let named_llvals = Hashtbl.find node_vars_llvalue node.mn_name in
   if Llvm.type_is_sized typ then
     let llvalue = compile_expr typ node eq.meq_expr in
@@ -606,15 +614,17 @@ let compile_equation node eq =
         in
         Llvm.build_store llvalue ptr llvm_builder
     | _ ->
-      let l = List.mapi (fun idx elt ->
+      let offsets = Hashtbl.find mem_struct_attr_offset typ_name in
+      let l = List.map (fun elt ->
         let (name, _) = elt in
+        let idx = List.assoc name offsets in
         let gep = Llvm.build_struct_gep llvalue idx "" llvm_builder in
         let value = Llvm.build_load gep "" llvm_builder in
         let ptr = List.assoc name named_llvals in
         Llvm.build_store value ptr llvm_builder
-      ) (List.rev eq.meq_patt) in
+      ) eq.meq_patt in
       assert ((List.length l) > 0);
-      List.hd (List.rev l)
+      List.hd l
     end
   else
     Llvm.build_ret_void llvm_builder
@@ -713,15 +723,17 @@ let compile_node node =
   if !has_mem then update_mem (!mem_ptr) node.mn_update node.mn_name;
   let _ = Llvm.build_br ret_b llvm_builder in
   Llvm.position_at_end ret_b llvm_builder;
-  let output_names = List.map (fun (n, _) -> n) (List.rev output_list) in
+  let output_names = List.map (fun (n, _) -> n) output_list in
   let ret_list = List.map (fun n -> List.assoc n name_llvalues) output_names in
   match ret_list with
   | [] ->
       Llvm.build_ret_void llvm_builder
   | _ ->
       let ret_struct = Hashtbl.find node_ret_struct func_name in
+      let ret_offset = Hashtbl.find mem_struct_attr_offset ("ret_"^func_name) in
       let struct_val = Llvm.build_alloca ret_struct "" llvm_builder in
-      List.iteri (fun idx elt ->
+      List.iter (fun elt ->
+        let idx = List.assoc (Llvm.value_name elt) ret_offset in
         let gep = Llvm.build_struct_gep struct_val idx "" llvm_builder in
         let llval = Llvm.build_load elt "" llvm_builder in
         let _ = Llvm.build_store llval gep llvm_builder in
