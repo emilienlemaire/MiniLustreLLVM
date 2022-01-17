@@ -39,8 +39,17 @@ let
     c = (0 fby c) + 1;
 tel
 
-node main(tick: int) returns (led1, led2 : bool);
+node fun(tick: int) returns (led1, led2 : bool);
 let
   led1 = if ((cmpt(true) mod 6) = 0) then not (true fby led1) else (true fby led1);
   led2 = if ((cmpt(true) mod 3) = 0) then not (true fby led2) else (true fby led2);
+tel
+
+node n (u : unit)
+returns (o : unit);
+var l1, l2 : bool; t : int;
+let
+  t = 1;
+  (l1, l2) = fun(t);
+  o = print(t);
 tel
