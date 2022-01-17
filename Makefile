@@ -10,7 +10,7 @@ OCAMLFIND  = ocamlfind
 OCAMLC     = ocamlopt
 OCAMLFLAGS = -O3 -linkpkg -package graphics
 MLSC       = ./_build/default/src/minilustre.exe
-MLSCFLAGS  = -main n -steps 100000000
+MLSCFLAGS  = -main n -steps 1000
 
 # compilers
 COMPILE.ocaml = $(OCAMLFIND) $(OCAMLC) $(OCAMLFLAGS)
