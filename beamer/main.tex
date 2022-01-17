@@ -129,24 +129,28 @@
 \begin{frame}[fragile]{En pratique}
     \vfill
     \begin{itemize}
-        \vfill\item Interface C++ et bindings OCaml
-        \begin{minted}[baselinestretch=1.2,fontsize=\footnotesize]{ocaml}
-    let main = Llvm.declare_function "main" i32 in
+        \item Interface C++ et bindings OCaml
+        \begin{minted}
+            [baselinestretch=1.1,escapeinside=||,bgcolor=LightGray,fontsize=\footnotesize]
+            {ocaml}
+    let main = Llvm.declare_function "main" i32_typ in
+    let entry_block = (Llvm.basic_blocks func).(0) in
+    Llvm.position_at_end entry_block llvm_builder;
     let o = Llvm.build_alloca llvm_typ "o" llvm_builder in
-    let one = Llvm.const_int i32_ty 1 in
+    let one = Llvm.const_int i32_typ 1 in
     let store = Llvm.build_store o one llvm_builder in
-    ...
+    |$\qquad\vdots$|
         \end{minted}
-
         \vfill\item
         Génération du code LLVM IR (fichiers .ll)
-        \begin{minted}[baselinestretch=1.2,fontsize=\footnotesize]{llvm}
+        \begin{minted}
+            [baselinestretch=1.1,escapeinside=||,bgcolor=LightGray,fontsize=\footnotesize]
+            {llvm}
     declare i32 @main() #0 {
       entry:
         %o = alloca i32, align 4
         store i32 1, i32* %o, align 4
-        ...
-    }
+    |$\qquad\vdots$|
         \end{minted}
     \end{itemize}
 \vfill
@@ -167,7 +171,7 @@
 \begin{frame}[fragile]{Exemple de transformation}
     \begin{columns}
     \begin{column}{0.25\textwidth}
-  \begin{minted}[baselinestretch=1.2,fontsize=\footnotesize]{ocaml}
+    \begin{minted}[baselinestretch=1.2,bgcolor=LightGray,fontsize=\footnotesize]{python}
 node f(x:int)
 returns (o:int);
 let
@@ -179,7 +183,7 @@ tel
         $\mapsto$
     \end{column}
     \begin{column}{0.70\textwidth}  %%<--- here
-  \begin{minted}[baselinestretch=1.2,fontsize=\footnotesize]{llvm}
+    \begin{minted}[baselinestretch=1.2,bgcolor=LightGray,fontsize=\footnotesize]{llvm}
 define i64 @f_1_step(i32 x) {
   %o = alloca i32, align 4
   store i32 1, i32* %o, align 4
@@ -262,7 +266,7 @@ define i64 @f_1_step(i32 x) {
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{frame}{Démonstration}
-    En direct
+    \centerline{C'est parti}
 \end{frame}
 
 
