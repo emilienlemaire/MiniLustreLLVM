@@ -146,6 +146,7 @@
         \end{enumerate}
     \vfill \item Bindings simples d'utilisation
     \vfill \item Compilateur optimisant vers toutes les architectures
+    \vfill \item Infinité de registres (SSA) virtuels
     \end{itemize}
     \vfill
 \end{frame}
@@ -213,9 +214,9 @@
 \subsection{Dans le dur}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\begin{frame}[fragile]{Choix de représentation}
+\begin{frame}[fragile]{Choix d'implémentation}
     \begin{itemize}
-        \item tuple lustre $\to$ structure llvm \\
+        \vfill \item tuple lustre $\to$ structure llvm \\
 
 
             \begin{columns}
@@ -234,7 +235,10 @@
                         \end{minted}
                 \end{column}
             \end{columns}
+
+        \vfill \item la mémoire du noeud est un pointeur vers une structure
     \end{itemize}
+    \vfill
 \end{frame}
 
 \begin{frame}[fragile]{Exemple de transformation}
