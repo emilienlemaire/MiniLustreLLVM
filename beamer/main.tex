@@ -33,7 +33,6 @@
 \setbeamercolor{subsection number projected}{fg=mred, bg=mred,fg=white}
 \setbeamertemplate{itemize item}{\color{mred}$\blacksquare$}
 \setbeamertemplate{itemize item item}{\color{mred}$\blacksquare$}
-% \setbeamertemplate{enumerate item}{\color{mred}$\blacktriangleright$}
 \setbeamertemplate{enumerate item}{\color{mred}$\bullet$}
 
 \setbeamercovered{transparent}
@@ -46,11 +45,13 @@
 \definecolor{codegray}{rgb}{0.5,0.5,0.5}
 \definecolor{codepurple}{rgb}{0.58,0,0.82}
 \definecolor{mgreen}{RGB}{40,150,40}
-\definecolor{myellow}{RGB}{255,170,40}
+\definecolor{myellow}{RGB}{244,159,4}
+\definecolor{mblue}{RGB}{4,100,244}
+\definecolor{mgreen}{RGB}{30,160,8}
 
 \lstdefinestyle{mystyle}{
     backgroundcolor=\color{LightGray},
-    commentstyle=\color{codegreen},
+    commentstyle=\color{mgreen},
     keywordstyle=\color{mred},
     numberstyle=\tiny\color{codegray},
     stringstyle=\color{mgreen},
@@ -74,10 +75,10 @@
     morecomment=[s]{/*}{*/},
     morestring=[b]",
     emph={int, unit, float},
-    emphstyle=\color{orange},
+    emphstyle=\color{myellow},
     classoffset=1,
     keywords={print, fby},
-    keywordstyle=\color{blue},
+    keywordstyle=\color{mblue},
     classoffset=0,
 }
 
@@ -212,18 +213,22 @@
 \begin{frame}[fragile]{Exemple de transformation}
     \begin{columns}
     \begin{column}{0.30\textwidth}
+        \begin{figure}
         \begin{lstlisting}[language=lustre]
- node f(x:int)
+ node f (x:int)
  returns (o:int);
  let
      o = 1;
  tel \end{lstlisting}
+            \caption{in.mls}
+        \end{figure}
 
     \end{column}
     \begin{column}{0.05\textwidth}
         $\mapsto$
     \end{column}
     \begin{column}{0.65\textwidth}  %%<--- here
+        \begin{figure}
     \begin{minted}[baselinestretch=1.2,bgcolor=LightGray,fontsize=\footnotesize]{llvm}
 define i64 @f_1_step(i32 x) {
   %o = alloca i32, align 4
@@ -238,6 +243,9 @@ define i64 @f_1_step(i32 x) {
   ret i64 %4
 }
    \end{minted}
+            \vspace{-1cm}
+            \caption{out.ll}
+        \end{figure}
     \end{column}
     \end{columns}
 \end{frame}
@@ -249,7 +257,7 @@ define i64 @f_1_step(i32 x) {
 \begin{frame}[fragile]{Lustre}
     \begin{figure}
         \begin{lstlisting}[language=lustre]
-    node t() returns (i: int);
+    node t () returns (i: int);
     let
       i = 1 fby i + 1;
     tel
