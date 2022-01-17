@@ -9,6 +9,8 @@
 \usepackage{appendix}
 \usepackage{babel}
 \usepackage{xcolor} % to access the named colour LightGray
+\definecolor{LightGray}{gray}{0.9}
+
 \usepackage{minted}
 \usepackage{pgfplots} % package used to implement the plot
 
@@ -199,6 +201,25 @@ define i64 @f_1_step(i32 x) {
 \subsection{Benchmarks}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+\begin{frame}[fragile]{Lustre}
+    \begin{figure}
+        \begin{minted}[baselinestretch=1.2,bgcolor=LightGray,fontsize=\footnotesize]{python}
+    node t() returns (i: int);
+    let
+      i = 1 fby i + 1;
+    tel
+
+    node n (u: unit) returns (o: unit);
+    var i: int;
+    let
+      i = t ();
+      o = print("coucou", i);
+    tel
+        \end{minted}
+        \caption{Fichier simple.mls}
+    \end{figure}
+
+\end{frame}
 
 \begin{frame}{Performances}
     \begin{table}[h]
