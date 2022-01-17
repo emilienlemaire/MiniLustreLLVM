@@ -304,38 +304,16 @@ define i64 @f_1_step(i32 x) {
 \begin{frame}{Performances}
     \begin{table}[h]
         \begin{center}
-            \begin{tabular}{|r|c|c|c|}\hline
-                                & simple.mls ($10^7$) & simple.mls ($10^8$) & todo.mls \\ \hline\hline
-                          LLVM  & 13.84s             & 140.70s            & todo     \\ \hline
-                          OCaml & 16.29s             & 185.49s            & todo     \\ \hline
+            \begin{tabular}{|r|c|c|}\hline
+                                & simple.mls ($10^7$) & simple.mls ($10^8$) \\ \hline\hline
+                          LLVM  & 13.84s              & 140.70s             \\ \hline
+                          OCaml & 16.29s              & 185.49s             \\ \hline
                           % Lustre compiler & 11s       & 9s        & 19s       \\ \hline
             \end{tabular}
             \caption{Table des performances comparées en fonction du langage cible}
         \end{center}
     \end{table}
 \end{frame}
-
-% \begin{frame}{Performances}
-%     \begin{tikzpicture}
-%         \begin{axis}
-%             [
-%             ybar, % ybar command displays the graph in horizontal form, while the xbar command displays the graph in vertical form.
-%             enlargelimits=0.15,% these limits are used to shrink or expand the graph. The lesser the limit, the higher the graph will expand or grow. The greater the limit, the more graph will shrink.
-%             legend style={at={(0.4,-0.25)}, % these are the measures of the bottom row containing surplus (wheat, Tea, rice), where -0.25 is the gap between the bottom row and the graph.
-%             anchor=north,legend columns=-1},
-%             % here, north is the position of the bottom legend row. You can specify the east, west, or south direction to shift the location.
-%             symbolic x coords={Ex1, Ex2, Ex3},
-%             xtick=data,
-%             nodes near coords,
-%             nodes near coords align={vertical},
-%             ]
-%             \addplot coordinates {(Ex1, 75) (Ex2, 78) (Ex3, 80)}; % these are the measures of a particular bar graph. The tick marks of the y-axis will be adjusted automatically according to the data values entered in the coordinates.
-%             \addplot coordinates {(Ex1, 70) (Ex2, 63) (Ex3, 68)};
-%             \legend{LLVM, OCaml}
-
-%         \end{axis}
-%     \end{tikzpicture}
-% \end{frame}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Démonstration}
