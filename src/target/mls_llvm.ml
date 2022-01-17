@@ -268,11 +268,24 @@ let rec compile_expr typ ({mn_name = name;_ } as node) ({mexpr_desc = expr; _} a
   | ME_unop (u, e') ->
       let open Llvm.TypeKind in
       let llval = compile_expr typ node e' in
+      let llval = if (Llvm.classify_type (Llvm.type_of llval)) = Llvm.TypeKind.Pointer then
+        Llvm.build_load llval "" llvm_builder
+      else
+        llval
+      in
       begin match (Llvm.classify_type (Llvm.type_of llval)), u with
         | Integer, Uminus -> Llvm.build_neg llval "" llvm_builder
         | Integer, Unot   -> Llvm.build_not llval "" llvm_builder
         | Float, Uminus_f -> Llvm.build_fneg llval "" llvm_builder
-        | _               -> Llvm.build_unreachable llvm_builder end
+        | _               ->
+            let string_of_unop = function
+              | Uminus -> "-"
+              | Uminus_f -> "-."
+              | Unot     -> "~"
+            in
+            print_endline "unop";
+            print_endline (Printf.sprintf "%s %s" (Llvm.string_of_llvalue llval) (string_of_unop u));
+            Llvm.build_unreachable llvm_builder end
   | ME_binop (op, lhs, rhs) ->
       let open Llvm.TypeKind in
       let lhs_val = compile_expr typ node lhs in
@@ -347,7 +360,6 @@ let rec compile_expr typ ({mn_name = name;_ } as node) ({mexpr_desc = expr; _} a
       let node_val = Hashtbl.find node_vals callee_name in
       let call = Llvm.build_call node_val args_arr "" llvm_builder in
       let node_typ = Hashtbl.find node_ret_struct callee_name in
-      (* Llvm.dump_module (!llvm_module); *)
       begin match Llvm.classify_type node_typ with
         | Llvm.TypeKind.Struct ->
           let size = get_struct_size node_typ in
@@ -463,9 +475,19 @@ let rec compile_expr typ ({mn_name = name;_ } as node) ({mexpr_desc = expr; _} a
       let _ = Llvm.build_cond_br cond_val then_b else_b llvm_builder in
       Llvm.position_at_end then_b llvm_builder;
       let then_val = compile_expr typ node then_e in
+      let then_val = if Llvm.classify_type (Llvm.type_of then_val) = Llvm.TypeKind.Pointer then
+        Llvm.build_load then_val "" llvm_builder
+      else
+        then_val
+      in
       let _ = Llvm.build_br phi_b llvm_builder in
       Llvm.position_at_end else_b llvm_builder;
       let else_val = compile_expr typ node else_e in
+      let else_val = if Llvm.classify_type (Llvm.type_of else_val) = Llvm.TypeKind.Pointer then
+        Llvm.build_load else_val "" llvm_builder
+      else
+        else_val
+      in
       let _ = Llvm.build_br phi_b llvm_builder in
       Llvm.position_at_end phi_b llvm_builder;
       Llvm.build_phi [(then_val, then_b); (else_val, else_b)] "" llvm_builder
