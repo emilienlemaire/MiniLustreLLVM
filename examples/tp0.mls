@@ -1,0 +1,46 @@
+node max(fst, snd : float) returns (y : float);
+let
+  y = if fst > snd then fst else snd;
+tel
+
+node abs(x : float) returns (y : float);
+let
+  y = if x >= 0.0 then x else -. x;
+tel
+
+node saturate(x, l_bound, u_bound : float) returns (y : float);
+let
+  /* assert (l_bound <= u_bound); */
+  y =
+    if x <= l_bound then l_bound
+    else if x >= u_bound then u_bound
+    else x;
+tel
+
+-- séquentielles
+
+node always(x : bool) returns (y : bool);
+let
+  y = (true fby y) and x;
+tel
+
+node count_true(x : bool) returns (y : int);
+let
+  y = (0 fby y) + if x then 1 else 0;
+tel
+
+node count_succ_true(x : bool) returns (y : int);
+let
+  y = if x then (0 fby y) + 1 else 0;
+tel
+
+node cmpt(b : bool) returns (c : int);
+let
+    c = (0 fby c) + 1;
+tel
+
+node m2ain(tick: int) returns (led1, led2 : bool);
+let
+  led1 = if cmpt(true) mod 6 = 0 then not (true fby led1) else (true fby led1);
+  led2 = if cmpt(true) mod 3 = 0 then not (true fby led2) else (true fby led2);
+tel
