@@ -51,6 +51,7 @@
 %token THEN
 %token UNIT
 %token VAR
+%token MOD
 
 
 %nonassoc THEN
@@ -60,7 +61,7 @@
 %left AND
 %left COMP EQUAL NEQ                          /* < <= > >= <> = <> */
 %left PLUS MINUS PLUS_DOT MINUS_DOT           /* + -  */
-%left STAR SLASH STAR_DOT SLASH_DOT           /* * /  */
+%left STAR SLASH STAR_DOT SLASH_DOT MOD       /* * /  */
 %nonassoc uminus                              /* - */
 %nonassoc NOT                                 /* not */
 %left DOT
@@ -87,11 +88,11 @@ node:
   local_params
   LET eq_list TEL
     { { pn_name = $2;
-	pn_input = $4;
-	pn_output = $8;
-	pn_local = $11;
-	pn_equs = $13;
-	pn_loc = loc(); } }
+        pn_input = $4;
+        pn_output = $8;
+        pn_local = $11;
+        pn_equs = $13;
+        pn_loc = loc(); } }
 ;
 
 in_params:
@@ -175,6 +176,8 @@ expr:
     { mk_expr (PE_binop (Bsub, $1, $3)) }
 | expr MINUS_DOT expr
     { mk_expr (PE_binop (Bsub_f, $1, $3)) }
+| expr MOD expr
+    { mk_expr (PE_binop (Bmod, $1, $3)) }
 | expr STAR expr
     { mk_expr (PE_binop (Bmul, $1, $3)) }
 | expr STAR_DOT expr

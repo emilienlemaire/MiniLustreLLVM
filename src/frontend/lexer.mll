@@ -32,6 +32,7 @@
         "true", CONST_BOOL(true);
         "unit", UNIT;
         "var", VAR;
+        "mod", MOD;
       ];
     fun s ->
       try Hashtbl.find h s with Not_found -> IDENT s
@@ -55,8 +56,8 @@ rule token = parse
       { newline lexbuf; token lexbuf }
   | [' ' '\t' '\r']+
       { token lexbuf }
-(*   | "--" [^ '\n']* ['\n'] *)
-(*       { newline lexbuf; token lexbuf } *)
+  | "--" [^ '\n']* ['\n']
+      { newline lexbuf; token lexbuf }
   | "/*"
       { comment lexbuf; token lexbuf }
   | ident
