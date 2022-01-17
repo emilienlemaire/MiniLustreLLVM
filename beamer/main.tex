@@ -9,7 +9,9 @@
 \usepackage{appendix}
 \usepackage{babel}
 \usepackage{xcolor} % to access the named colour LightGray
-\usepackage{minted}
+\definecolor{LightGray}{gray}{0.9}
+
+
 \usepackage{pgfplots} % package used to implement the plot
 
 %%%START THEME SETTINGS
@@ -31,12 +33,54 @@
 \setbeamercolor{subsection number projected}{fg=mred, bg=mred,fg=white}
 \setbeamertemplate{itemize item}{\color{mred}$\blacksquare$}
 \setbeamertemplate{itemize item item}{\color{mred}$\blacksquare$}
-% \setbeamertemplate{enumerate item}{\color{mred}$\blacktriangleright$}
 \setbeamertemplate{enumerate item}{\color{mred}$\bullet$}
 
 \setbeamercovered{transparent}
 %%%END THEME SETTINGS
 
+\usepackage{minted}
+\usepackage{listings}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{mgreen}{RGB}{40,150,40}
+\definecolor{myellow}{RGB}{244,159,4}
+\definecolor{mblue}{RGB}{4,100,244}
+\definecolor{mgreen}{RGB}{30,160,8}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{LightGray},
+    commentstyle=\color{mgreen},
+    keywordstyle=\color{mred},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{mgreen},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2,
+}
+
+\lstset{style=mystyle}
+
+\lstdefinelanguage{lustre} {
+    morekeywords={node, let, tel, returns, var},
+    sensitive=false,
+    morecomment=[l]{//},
+    morecomment=[s]{/*}{*/},
+    morestring=[b]",
+    emph={int, unit, float},
+    emphstyle=\color{myellow},
+    classoffset=1,
+    keywords={print, fby},
+    keywordstyle=\color{mblue},
+    classoffset=0,
+}
 
 %------------------------------------------------------
 \title[Mini-Lustre $\mapsto$ LLVM]{Compilation de Mini-Lustre vers LLVM}
@@ -127,24 +171,28 @@
 \begin{frame}[fragile]{En pratique}
     \vfill
     \begin{itemize}
-        \vfill\item Interface C++ et bindings OCaml
-        \begin{minted}[baselinestretch=1.2,fontsize=\footnotesize]{ocaml}
-    let main = Llvm.declare_function "main" i32 in
+        \item Interface C++ et bindings OCaml
+        \begin{minted}
+            [baselinestretch=1.1,escapeinside=||,bgcolor=LightGray,fontsize=\footnotesize]
+            {ocaml}
+    let main = Llvm.declare_function "main" i32_typ in
+    let entry_block = (Llvm.basic_blocks func).(0) in
+    Llvm.position_at_end entry_block llvm_builder;
     let o = Llvm.build_alloca llvm_typ "o" llvm_builder in
-    let one = Llvm.const_int i32_ty 1 in
+    let one = Llvm.const_int i32_typ 1 in
     let store = Llvm.build_store o one llvm_builder in
-    ...
+    |$\qquad\vdots$|
         \end{minted}
-
         \vfill\item
         Génération du code LLVM IR (fichiers .ll)
-        \begin{minted}[baselinestretch=1.2,fontsize=\footnotesize]{llvm}
+        \begin{minted}
+            [baselinestretch=1.1,escapeinside=||,bgcolor=LightGray,fontsize=\footnotesize]
+            {llvm}
     declare i32 @main() #0 {
       entry:
         %o = alloca i32, align 4
         store i32 1, i32* %o, align 4
-        ...
-    }
+    |$\qquad\vdots$|
         \end{minted}
     \end{itemize}
 \vfill
@@ -164,20 +212,24 @@
 
 \begin{frame}[fragile]{Exemple de transformation}
     \begin{columns}
-    \begin{column}{0.25\textwidth}
-  \begin{minted}[baselinestretch=1.2,fontsize=\footnotesize]{ocaml}
-node f(x:int)
-returns (o:int);
-let
- o = 1;
-tel
-   \end{minted}
+    \begin{column}{0.30\textwidth}
+        \begin{figure}
+        \begin{lstlisting}[language=lustre]
+ node f (x:int)
+ returns (o:int);
+ let
+     o = 1;
+ tel \end{lstlisting}
+            \caption{in.mls}
+        \end{figure}
+
     \end{column}
     \begin{column}{0.05\textwidth}
         $\mapsto$
     \end{column}
-    \begin{column}{0.70\textwidth}  %%<--- here
-  \begin{minted}[baselinestretch=1.2,fontsize=\footnotesize]{llvm}
+    \begin{column}{0.65\textwidth}  %%<--- here
+        \begin{figure}
+    \begin{minted}[baselinestretch=1.2,bgcolor=LightGray,fontsize=\footnotesize]{llvm}
 define i64 @f_1_step(i32 x) {
   %o = alloca i32, align 4
   store i32 1, i32* %o, align 4
@@ -191,6 +243,9 @@ define i64 @f_1_step(i32 x) {
   ret i64 %4
 }
    \end{minted}
+            \vspace{-1cm}
+            \caption{out.ll}
+        \end{figure}
     \end{column}
     \end{columns}
 \end{frame}
@@ -199,6 +254,25 @@ define i64 @f_1_step(i32 x) {
 \subsection{Benchmarks}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+\begin{frame}[fragile]{Lustre}
+    \begin{figure}
+        \begin{lstlisting}[language=lustre]
+    node t () returns (i: int);
+    let
+      i = 1 fby i + 1;
+    tel
+
+    node n (u: unit) returns (o: unit);
+    var i: int;
+    let
+      i = t ();
+      o = print("coucou", i);
+    tel
+        \end{lstlisting}
+        \caption{Fichier simple.mls}
+    \end{figure}
+
+\end{frame}
 
 \begin{frame}{Performances}
     \begin{table}[h]
@@ -241,7 +315,7 @@ define i64 @f_1_step(i32 x) {
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{frame}{Démonstration}
-    En direct
+    \centerline{C'est parti}
 \end{frame}
 
 
