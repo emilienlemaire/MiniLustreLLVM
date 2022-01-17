@@ -1,0 +1,40 @@
+node euler(h, xprime : float) returns (x: float);
+let
+  x = 0.1 fby x +. h *. xprime;
+tel;
+
+node chaudiere(c, alpha, beta, ext : float; u : bool)
+returns (temp : float);
+var tempprime: float;
+let
+  tempprime = if u then alpha *. (c -. (0.0 fby temp)) else beta *. (ext -. (0.0 fby temp));
+  temp = euler(0.0, tempprime);
+tel;
+
+node relai(bas, haut: float; v: float) returns (u: bool);
+let
+  u = false fby (if v < bas then true else if v > haut then false else u);
+tel;
+
+node loop ()
+returns (u: bool; temp: float);
+var bas, consigne, haut, c, alpha, beta : float;
+let
+  bas = 1.0;
+  haut = 1.0;
+  c = 50.0;
+  alpha = 0.1;
+  beta = 0.1;
+  consigne = 0.0;
+  temp = 0.0 fby chaudiere(c, alpha, beta, 0.0, u);
+  u = relai(consigne -. bas, consigne +. haut, temp);
+tel;
+
+node main (u : unit)
+returns (o : unit);
+var b: bool; f: float;
+let
+  (b, f) = loop ();
+  o = print(b, f);
+tel;
+

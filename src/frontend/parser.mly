@@ -86,7 +86,7 @@ node:
 | NODE IDENT LPAREN in_params RPAREN
   RETURNS LPAREN out_params RPAREN SEMICOL
   local_params
-  LET eq_list TEL
+  LET eq_list TEL option(SEMICOL)
     { { pn_name = $2;
         pn_input = $4;
         pn_output = $8;
