@@ -90,6 +90,7 @@
 %------------------------------------------------------
 
 \newcommand{\ocaml}[1]{\mintinline{ocaml}{#1}}
+\newcommand{\llvm}[1]{\mintinline{llvm}{#1}}
 
 \newcommand{\angArr}{
     \rotatebox[origin=c]{180}{$\Lsh$}
@@ -118,6 +119,8 @@
         \item LLVM := Low Level Virtual Machine
 
         \vfill\item LLMV IR := langage intermédiare que l'on utilise
+
+        \vfill\item Utilisé par Rust, Clang, \ldots
 
         \vfill\item Interface C++ et bindings OCaml
     \end{itemize}
@@ -209,6 +212,30 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Dans le dur}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}[fragile]{Choix de représentation}
+    \begin{itemize}
+        \item tuple lustre $\to$ structure llvm \\
+
+
+            \begin{columns}
+
+                \begin{column}{0.1\textwidth}
+                \end{column}
+                \begin{column}{0.3\textwidth}
+%                         \begin{lstlisting}[language=lustre]
+% (a:int, b:float) \end{lstlisting}
+
+                    \ocaml{(a:int,b:float)} $\mapsto$
+                \end{column}
+                \begin{column}{0.6\textwidth}  %%<--- here
+                        \begin{minted}[fontsize=\small]{llvm}
+%tuple_t_0 = type {i32, float}
+                        \end{minted}
+                \end{column}
+            \end{columns}
+    \end{itemize}
+\end{frame}
 
 \begin{frame}[fragile]{Exemple de transformation}
     \begin{columns}
