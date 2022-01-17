@@ -30,7 +30,7 @@ let
   u = relai(consigne -. bas, consigne +. haut, temp);
 tel;
 
-node main (u : unit)
+node n (u : unit)
 returns (o : unit);
 var b: bool; f: float;
 let
