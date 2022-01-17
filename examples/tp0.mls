@@ -39,8 +39,8 @@ let
     c = (0 fby c) + 1;
 tel
 
-node m2ain(tick: int) returns (led1, led2 : bool);
+node main(tick: int) returns (led1, led2 : bool);
 let
-  led1 = if cmpt(true) mod 6 = 0 then not (true fby led1) else (true fby led1);
-  led2 = if cmpt(true) mod 3 = 0 then not (true fby led2) else (true fby led2);
+  led1 = if ((cmpt(true) mod 6) = 0) then not (true fby led1) else (true fby led1);
+  led2 = if ((cmpt(true) mod 3) = 0) then not (true fby led2) else (true fby led2);
 tel
